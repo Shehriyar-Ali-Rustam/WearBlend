@@ -1,209 +1,355 @@
 """
 Advanced Mannequin Renderer for WearBlend
-Creates realistic 3D-looking mannequins with proper clothing overlay
+Creates realistic fashion-style mannequins similar to professional lookbook images
 """
 
-from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
+from PIL import Image, ImageDraw, ImageFilter, ImageEnhance, ImageChops
 from typing import Dict, Tuple, Optional, List
 import io
 import math
 
 
 class MannequinRenderer:
-    """Renders realistic 3D-looking mannequins with natural clothing overlay"""
+    """
+    Renders realistic fashion mannequins with natural clothing overlay.
+    Inspired by professional fashion flat-lay and lookbook styling.
+    """
 
-    # Mannequin dimensions
-    MANNEQUIN_SIZE = (500, 800)
+    MANNEQUIN_SIZE = (600, 900)
 
-    # Body segment definitions for realistic proportions
-    BODY_SEGMENTS = {
-        'male': {
-            'head': {'center': (250, 60), 'width': 70, 'height': 85},
-            'neck': {'center': (250, 115), 'width': 35, 'height': 30},
-            'shoulders': {'center': (250, 145), 'width': 180, 'height': 25},
-            'chest': {'center': (250, 200), 'width': 160, 'height': 100},
-            'waist': {'center': (250, 310), 'width': 130, 'height': 40},
-            'hips': {'center': (250, 360), 'width': 140, 'height': 50},
-            'left_arm_upper': {'start': (170, 145), 'end': (130, 260), 'width': 35},
-            'right_arm_upper': {'start': (330, 145), 'end': (370, 260), 'width': 35},
-            'left_arm_lower': {'start': (130, 260), 'end': (110, 380), 'width': 28},
-            'right_arm_lower': {'start': (370, 260), 'end': (390, 380), 'width': 28},
-            'left_leg_upper': {'start': (210, 380), 'end': (200, 550), 'width': 50},
-            'right_leg_upper': {'start': (290, 380), 'end': (300, 550), 'width': 50},
-            'left_leg_lower': {'start': (200, 550), 'end': (195, 720), 'width': 38},
-            'right_leg_lower': {'start': (300, 550), 'end': (305, 720), 'width': 38},
-            'left_foot': {'center': (190, 750), 'width': 55, 'height': 25},
-            'right_foot': {'center': (310, 750), 'width': 55, 'height': 25},
-        },
+    # Realistic body shape coordinates for smooth silhouette
+    # These define the outline for a natural human form
+    BODY_SHAPES = {
         'female': {
-            'head': {'center': (250, 55), 'width': 65, 'height': 80},
-            'neck': {'center': (250, 108), 'width': 30, 'height': 28},
-            'shoulders': {'center': (250, 138), 'width': 155, 'height': 22},
-            'chest': {'center': (250, 190), 'width': 145, 'height': 90},
-            'waist': {'center': (250, 290), 'width': 100, 'height': 35},
-            'hips': {'center': (250, 345), 'width': 150, 'height': 55},
-            'left_arm_upper': {'start': (172, 138), 'end': (140, 248), 'width': 28},
-            'right_arm_upper': {'start': (328, 138), 'end': (360, 248), 'width': 28},
-            'left_arm_lower': {'start': (140, 248), 'end': (125, 365), 'width': 22},
-            'right_arm_lower': {'start': (360, 248), 'end': (375, 365), 'width': 22},
-            'left_leg_upper': {'start': (215, 375), 'end': (208, 545), 'width': 45},
-            'right_leg_upper': {'start': (285, 375), 'end': (292, 545), 'width': 45},
-            'left_leg_lower': {'start': (208, 545), 'end': (205, 715), 'width': 32},
-            'right_leg_lower': {'start': (292, 545), 'end': (295, 715), 'width': 32},
-            'left_foot': {'center': (200, 745), 'width': 48, 'height': 22},
-            'right_foot': {'center': (300, 745), 'width': 48, 'height': 22},
+            # Head and neck
+            'head_top': (300, 25),
+            'head_right': (340, 60),
+            'head_bottom_right': (330, 110),
+            'neck_right': (320, 130),
+            'neck_bottom_right': (325, 155),
+
+            # Shoulders and arms (right side)
+            'shoulder_right': (395, 165),
+            'arm_outer_right_1': (420, 200),
+            'arm_outer_right_2': (435, 280),
+            'arm_outer_right_3': (445, 360),
+            'hand_right': (450, 420),
+            'arm_inner_right_3': (420, 410),
+            'arm_inner_right_2': (405, 340),
+            'arm_inner_right_1': (390, 260),
+            'armpit_right': (375, 200),
+
+            # Torso right side
+            'bust_right': (380, 240),
+            'waist_right': (355, 340),
+            'hip_right': (385, 420),
+            'hip_outer_right': (390, 480),
+
+            # Legs right side
+            'thigh_outer_right': (380, 550),
+            'knee_outer_right': (370, 650),
+            'calf_outer_right': (365, 750),
+            'ankle_right': (360, 830),
+            'foot_right': (380, 865),
+            'foot_inner_right': (340, 865),
+            'ankle_inner_right': (335, 830),
+            'calf_inner_right': (340, 750),
+            'knee_inner_right': (345, 650),
+            'thigh_inner_right': (340, 550),
+            'crotch': (300, 500),
+
+            # Legs left side (mirror)
+            'thigh_inner_left': (260, 550),
+            'knee_inner_left': (255, 650),
+            'calf_inner_left': (260, 750),
+            'ankle_inner_left': (265, 830),
+            'foot_inner_left': (260, 865),
+            'foot_left': (220, 865),
+            'ankle_left': (240, 830),
+            'calf_outer_left': (235, 750),
+            'knee_outer_left': (230, 650),
+            'thigh_outer_left': (220, 550),
+
+            # Hip and torso left side
+            'hip_outer_left': (210, 480),
+            'hip_left': (215, 420),
+            'waist_left': (245, 340),
+            'bust_left': (220, 240),
+
+            # Arms left side
+            'armpit_left': (225, 200),
+            'arm_inner_left_1': (210, 260),
+            'arm_inner_left_2': (195, 340),
+            'arm_inner_left_3': (180, 410),
+            'hand_left': (150, 420),
+            'arm_outer_left_3': (155, 360),
+            'arm_outer_left_2': (165, 280),
+            'arm_outer_left_1': (180, 200),
+            'shoulder_left': (205, 165),
+
+            # Back to neck and head
+            'neck_bottom_left': (275, 155),
+            'neck_left': (280, 130),
+            'head_bottom_left': (270, 110),
+            'head_left': (260, 60),
+        },
+        'male': {
+            # Head and neck
+            'head_top': (300, 20),
+            'head_right': (345, 55),
+            'head_bottom_right': (338, 105),
+            'neck_right': (330, 125),
+            'neck_bottom_right': (340, 155),
+
+            # Shoulders and arms (right side) - broader for male
+            'shoulder_right': (420, 165),
+            'arm_outer_right_1': (450, 210),
+            'arm_outer_right_2': (465, 300),
+            'arm_outer_right_3': (470, 390),
+            'hand_right': (475, 450),
+            'arm_inner_right_3': (445, 440),
+            'arm_inner_right_2': (425, 360),
+            'arm_inner_right_1': (405, 280),
+            'armpit_right': (395, 210),
+
+            # Torso right side - more straight/angular
+            'chest_right': (395, 250),
+            'waist_right': (375, 350),
+            'hip_right': (380, 420),
+            'hip_outer_right': (375, 470),
+
+            # Legs right side
+            'thigh_outer_right': (370, 540),
+            'knee_outer_right': (365, 650),
+            'calf_outer_right': (360, 760),
+            'ankle_right': (355, 840),
+            'foot_right': (375, 875),
+            'foot_inner_right': (335, 875),
+            'ankle_inner_right': (330, 840),
+            'calf_inner_right': (335, 760),
+            'knee_inner_right': (340, 650),
+            'thigh_inner_right': (335, 540),
+            'crotch': (300, 490),
+
+            # Legs left side
+            'thigh_inner_left': (265, 540),
+            'knee_inner_left': (260, 650),
+            'calf_inner_left': (265, 760),
+            'ankle_inner_left': (270, 840),
+            'foot_inner_left': (265, 875),
+            'foot_left': (225, 875),
+            'ankle_left': (245, 840),
+            'calf_outer_left': (240, 760),
+            'knee_outer_left': (235, 650),
+            'thigh_outer_left': (230, 540),
+
+            # Hip and torso left side
+            'hip_outer_left': (225, 470),
+            'hip_left': (220, 420),
+            'waist_left': (225, 350),
+            'chest_left': (205, 250),
+
+            # Arms left side
+            'armpit_left': (205, 210),
+            'arm_inner_left_1': (195, 280),
+            'arm_inner_left_2': (175, 360),
+            'arm_inner_left_3': (155, 440),
+            'hand_left': (125, 450),
+            'arm_outer_left_3': (130, 390),
+            'arm_outer_left_2': (135, 300),
+            'arm_outer_left_1': (150, 210),
+            'shoulder_left': (180, 165),
+
+            # Back to neck and head
+            'neck_bottom_left': (260, 155),
+            'neck_left': (270, 125),
+            'head_bottom_left': (262, 105),
+            'head_left': (255, 55),
         }
     }
 
-    # Clothing regions for overlay mapping
+    # Clothing placement regions with body-aware boundaries
     CLOTHING_REGIONS = {
-        'male': {
-            'shirt': {
-                'bounds': (90, 130, 410, 350),
-                'anchor': (250, 240),
-                'scale': (0.75, 0.55),
-                'perspective': 0.08,
-                'curve_intensity': 0.15
-            },
-            'top': {
-                'bounds': (90, 130, 410, 350),
-                'anchor': (250, 240),
-                'scale': (0.75, 0.55),
-                'perspective': 0.08,
-                'curve_intensity': 0.15
-            },
-            'pants': {
-                'bounds': (140, 320, 360, 720),
-                'anchor': (250, 520),
-                'scale': (0.55, 0.60),
-                'perspective': 0.05,
-                'curve_intensity': 0.10
-            },
-            'bottom': {
-                'bounds': (140, 320, 360, 720),
-                'anchor': (250, 520),
-                'scale': (0.55, 0.60),
-                'perspective': 0.05,
-                'curve_intensity': 0.10
-            },
-            'jacket': {
-                'bounds': (80, 125, 420, 380),
-                'anchor': (250, 250),
-                'scale': (0.80, 0.60),
-                'perspective': 0.10,
-                'curve_intensity': 0.12
-            },
-            'tie': {
-                'bounds': (220, 150, 280, 320),
-                'anchor': (250, 235),
-                'scale': (0.15, 0.40),
-                'perspective': 0.02,
-                'curve_intensity': 0.05
-            },
-            'shoes': {
-                'bounds': (150, 720, 350, 780),
-                'anchor': (250, 750),
-                'scale': (0.45, 0.12),
-                'perspective': 0.0,
-                'curve_intensity': 0.0
-            },
-            'belt': {
-                'bounds': (150, 305, 350, 335),
-                'anchor': (250, 320),
-                'scale': (0.50, 0.08),
-                'perspective': 0.03,
-                'curve_intensity': 0.08
-            },
-            'watch': {
-                'bounds': (95, 340, 135, 390),
-                'anchor': (115, 365),
-                'scale': (0.10, 0.12),
-                'perspective': 0.0,
-                'curve_intensity': 0.0
-            },
-            'scarf': {
-                'bounds': (180, 110, 320, 200),
-                'anchor': (250, 155),
-                'scale': (0.35, 0.22),
-                'perspective': 0.05,
-                'curve_intensity': 0.10
-            },
-        },
         'female': {
             'shirt': {
-                'bounds': (105, 125, 395, 320),
-                'anchor': (250, 222),
-                'scale': (0.70, 0.50),
-                'perspective': 0.06,
-                'curve_intensity': 0.18
+                'top': 155,
+                'bottom': 420,
+                'left': 150,
+                'right': 450,
+                'body_width_at_top': 190,
+                'body_width_at_bottom': 170,
+                'center_x': 300
             },
             'top': {
-                'bounds': (105, 125, 395, 320),
-                'anchor': (250, 222),
-                'scale': (0.70, 0.50),
-                'perspective': 0.06,
-                'curve_intensity': 0.18
+                'top': 155,
+                'bottom': 420,
+                'left': 150,
+                'right': 450,
+                'body_width_at_top': 190,
+                'body_width_at_bottom': 170,
+                'center_x': 300
             },
             'pants': {
-                'bounds': (145, 310, 355, 715),
-                'anchor': (250, 512),
-                'scale': (0.52, 0.58),
-                'perspective': 0.04,
-                'curve_intensity': 0.08
+                'top': 400,
+                'bottom': 860,
+                'left': 180,
+                'right': 420,
+                'body_width_at_top': 180,
+                'body_width_at_bottom': 120,
+                'center_x': 300
             },
             'bottom': {
-                'bounds': (145, 310, 355, 715),
-                'anchor': (250, 512),
-                'scale': (0.52, 0.58),
-                'perspective': 0.04,
-                'curve_intensity': 0.08
+                'top': 400,
+                'bottom': 860,
+                'left': 180,
+                'right': 420,
+                'body_width_at_top': 180,
+                'body_width_at_bottom': 120,
+                'center_x': 300
             },
             'jacket': {
-                'bounds': (95, 120, 405, 360),
-                'anchor': (250, 240),
-                'scale': (0.75, 0.55),
-                'perspective': 0.08,
-                'curve_intensity': 0.14
-            },
-            'tie': {
-                'bounds': (225, 145, 275, 290),
-                'anchor': (250, 218),
-                'scale': (0.12, 0.35),
-                'perspective': 0.02,
-                'curve_intensity': 0.05
+                'top': 150,
+                'bottom': 480,
+                'left': 120,
+                'right': 480,
+                'body_width_at_top': 220,
+                'body_width_at_bottom': 200,
+                'center_x': 300
             },
             'shoes': {
-                'bounds': (160, 715, 340, 770),
-                'anchor': (250, 742),
-                'scale': (0.40, 0.11),
-                'perspective': 0.0,
-                'curve_intensity': 0.0
+                'top': 850,
+                'bottom': 895,
+                'left': 200,
+                'right': 400,
+                'center_x': 300
+            },
+            'tie': {
+                'top': 160,
+                'bottom': 380,
+                'left': 270,
+                'right': 330,
+                'center_x': 300
             },
             'belt': {
-                'bounds': (160, 285, 340, 312),
-                'anchor': (250, 298),
-                'scale': (0.45, 0.07),
-                'perspective': 0.03,
-                'curve_intensity': 0.10
-            },
-            'watch': {
-                'bounds': (110, 330, 145, 375),
-                'anchor': (128, 352),
-                'scale': (0.09, 0.10),
-                'perspective': 0.0,
-                'curve_intensity': 0.0
+                'top': 335,
+                'bottom': 365,
+                'left': 230,
+                'right': 370,
+                'center_x': 300
             },
             'scarf': {
-                'bounds': (185, 105, 315, 185),
-                'anchor': (250, 145),
-                'scale': (0.32, 0.20),
-                'perspective': 0.05,
-                'curve_intensity': 0.12
+                'top': 120,
+                'bottom': 220,
+                'left': 200,
+                'right': 400,
+                'center_x': 300
             },
+            'bag': {
+                'top': 250,
+                'bottom': 450,
+                'left': 400,
+                'right': 520,
+                'center_x': 460
+            },
+            'watch': {
+                'top': 380,
+                'bottom': 420,
+                'left': 140,
+                'right': 180,
+                'center_x': 160
+            }
+        },
+        'male': {
+            'shirt': {
+                'top': 155,
+                'bottom': 430,
+                'left': 125,
+                'right': 475,
+                'body_width_at_top': 240,
+                'body_width_at_bottom': 170,
+                'center_x': 300
+            },
+            'top': {
+                'top': 155,
+                'bottom': 430,
+                'left': 125,
+                'right': 475,
+                'body_width_at_top': 240,
+                'body_width_at_bottom': 170,
+                'center_x': 300
+            },
+            'pants': {
+                'top': 410,
+                'bottom': 870,
+                'left': 190,
+                'right': 410,
+                'body_width_at_top': 160,
+                'body_width_at_bottom': 110,
+                'center_x': 300
+            },
+            'bottom': {
+                'top': 410,
+                'bottom': 870,
+                'left': 190,
+                'right': 410,
+                'body_width_at_top': 160,
+                'body_width_at_bottom': 110,
+                'center_x': 300
+            },
+            'jacket': {
+                'top': 150,
+                'bottom': 490,
+                'left': 100,
+                'right': 500,
+                'body_width_at_top': 260,
+                'body_width_at_bottom': 200,
+                'center_x': 300
+            },
+            'shoes': {
+                'top': 860,
+                'bottom': 900,
+                'left': 200,
+                'right': 400,
+                'center_x': 300
+            },
+            'tie': {
+                'top': 165,
+                'bottom': 400,
+                'left': 265,
+                'right': 335,
+                'center_x': 300
+            },
+            'belt': {
+                'top': 345,
+                'bottom': 375,
+                'left': 220,
+                'right': 380,
+                'center_x': 300
+            },
+            'scarf': {
+                'top': 120,
+                'bottom': 220,
+                'left': 200,
+                'right': 400,
+                'center_x': 300
+            },
+            'bag': {
+                'top': 260,
+                'bottom': 460,
+                'left': 420,
+                'right': 550,
+                'center_x': 485
+            },
+            'watch': {
+                'top': 400,
+                'bottom': 445,
+                'left': 130,
+                'right': 175,
+                'center_x': 152
+            }
         }
     }
 
-    # Layer order (lower = rendered first/behind)
     LAYER_ORDER = {
         'pants': 1, 'bottom': 1,
         'shirt': 2, 'top': 2,
@@ -212,386 +358,335 @@ class MannequinRenderer:
         'jacket': 5,
         'scarf': 6,
         'watch': 7,
+        'bag': 8,
         'shoes': 0
     }
 
-    # Mannequin surface colors for 3D effect
-    MANNEQUIN_COLORS = {
-        'light': {
-            'base': (235, 225, 215),
-            'highlight': (250, 245, 240),
-            'shadow': (195, 185, 175),
-            'deep_shadow': (165, 155, 145)
-        },
-        'medium': {
-            'base': (215, 195, 175),
-            'highlight': (235, 220, 205),
-            'shadow': (175, 155, 135),
-            'deep_shadow': (145, 125, 105)
-        },
-        'tan': {
-            'base': (195, 165, 135),
-            'highlight': (220, 195, 170),
-            'shadow': (155, 125, 95),
-            'deep_shadow': (125, 95, 65)
-        },
-        'dark': {
-            'base': (130, 95, 70),
-            'highlight': (160, 125, 100),
-            'shadow': (100, 65, 40),
-            'deep_shadow': (70, 45, 25)
-        },
-        'deep': {
-            'base': (85, 55, 35),
-            'highlight': (115, 85, 65),
-            'shadow': (55, 35, 20),
-            'deep_shadow': (35, 20, 10)
-        }
+    # Skin tone colors - muted, realistic tones
+    SKIN_TONES = {
+        'light': (245, 235, 225),
+        'medium': (225, 205, 185),
+        'tan': (200, 170, 140),
+        'dark': (150, 110, 80),
+        'deep': (100, 70, 50)
     }
 
-    def __init__(self, gender: str = 'male', skin_tone: str = 'medium'):
+    def __init__(self, gender: str = 'female', skin_tone: str = 'medium'):
         self.gender = gender.lower()
         self.skin_tone = skin_tone.lower()
-        self.segments = self.BODY_SEGMENTS.get(self.gender, self.BODY_SEGMENTS['male'])
-        self.regions = self.CLOTHING_REGIONS.get(self.gender, self.CLOTHING_REGIONS['male'])
-        self.colors = self.MANNEQUIN_COLORS.get(self.skin_tone, self.MANNEQUIN_COLORS['medium'])
+        self.body_shape = self.BODY_SHAPES.get(self.gender, self.BODY_SHAPES['female'])
+        self.regions = self.CLOTHING_REGIONS.get(self.gender, self.CLOTHING_REGIONS['female'])
+        self.base_color = self.SKIN_TONES.get(self.skin_tone, self.SKIN_TONES['medium'])
+
+    def _get_body_outline_points(self) -> List[Tuple[int, int]]:
+        """Get ordered points for body outline polygon"""
+        shape = self.body_shape
+
+        if self.gender == 'female':
+            points = [
+                shape['head_top'],
+                shape['head_right'],
+                shape['head_bottom_right'],
+                shape['neck_right'],
+                shape['neck_bottom_right'],
+                shape['shoulder_right'],
+                shape['arm_outer_right_1'],
+                shape['arm_outer_right_2'],
+                shape['arm_outer_right_3'],
+                shape['hand_right'],
+                shape['arm_inner_right_3'],
+                shape['arm_inner_right_2'],
+                shape['arm_inner_right_1'],
+                shape['armpit_right'],
+                shape['bust_right'],
+                shape['waist_right'],
+                shape['hip_right'],
+                shape['hip_outer_right'],
+                shape['thigh_outer_right'],
+                shape['knee_outer_right'],
+                shape['calf_outer_right'],
+                shape['ankle_right'],
+                shape['foot_right'],
+                shape['foot_inner_right'],
+                shape['ankle_inner_right'],
+                shape['calf_inner_right'],
+                shape['knee_inner_right'],
+                shape['thigh_inner_right'],
+                shape['crotch'],
+                shape['thigh_inner_left'],
+                shape['knee_inner_left'],
+                shape['calf_inner_left'],
+                shape['ankle_inner_left'],
+                shape['foot_inner_left'],
+                shape['foot_left'],
+                shape['ankle_left'],
+                shape['calf_outer_left'],
+                shape['knee_outer_left'],
+                shape['thigh_outer_left'],
+                shape['hip_outer_left'],
+                shape['hip_left'],
+                shape['waist_left'],
+                shape['bust_left'],
+                shape['armpit_left'],
+                shape['arm_inner_left_1'],
+                shape['arm_inner_left_2'],
+                shape['arm_inner_left_3'],
+                shape['hand_left'],
+                shape['arm_outer_left_3'],
+                shape['arm_outer_left_2'],
+                shape['arm_outer_left_1'],
+                shape['shoulder_left'],
+                shape['neck_bottom_left'],
+                shape['neck_left'],
+                shape['head_bottom_left'],
+                shape['head_left'],
+            ]
+        else:  # male
+            points = [
+                shape['head_top'],
+                shape['head_right'],
+                shape['head_bottom_right'],
+                shape['neck_right'],
+                shape['neck_bottom_right'],
+                shape['shoulder_right'],
+                shape['arm_outer_right_1'],
+                shape['arm_outer_right_2'],
+                shape['arm_outer_right_3'],
+                shape['hand_right'],
+                shape['arm_inner_right_3'],
+                shape['arm_inner_right_2'],
+                shape['arm_inner_right_1'],
+                shape['armpit_right'],
+                shape['chest_right'],
+                shape['waist_right'],
+                shape['hip_right'],
+                shape['hip_outer_right'],
+                shape['thigh_outer_right'],
+                shape['knee_outer_right'],
+                shape['calf_outer_right'],
+                shape['ankle_right'],
+                shape['foot_right'],
+                shape['foot_inner_right'],
+                shape['ankle_inner_right'],
+                shape['calf_inner_right'],
+                shape['knee_inner_right'],
+                shape['thigh_inner_right'],
+                shape['crotch'],
+                shape['thigh_inner_left'],
+                shape['knee_inner_left'],
+                shape['calf_inner_left'],
+                shape['ankle_inner_left'],
+                shape['foot_inner_left'],
+                shape['foot_left'],
+                shape['ankle_left'],
+                shape['calf_outer_left'],
+                shape['knee_outer_left'],
+                shape['thigh_outer_left'],
+                shape['hip_outer_left'],
+                shape['hip_left'],
+                shape['waist_left'],
+                shape['chest_left'],
+                shape['armpit_left'],
+                shape['arm_inner_left_1'],
+                shape['arm_inner_left_2'],
+                shape['arm_inner_left_3'],
+                shape['hand_left'],
+                shape['arm_outer_left_3'],
+                shape['arm_outer_left_2'],
+                shape['arm_outer_left_1'],
+                shape['shoulder_left'],
+                shape['neck_bottom_left'],
+                shape['neck_left'],
+                shape['head_bottom_left'],
+                shape['head_left'],
+            ]
+
+        return points
+
+    def create_body_mask(self) -> Image.Image:
+        """Create a mask of the body silhouette"""
+        mask = Image.new('L', self.MANNEQUIN_SIZE, 0)
+        draw = ImageDraw.Draw(mask)
+
+        points = self._get_body_outline_points()
+        draw.polygon(points, fill=255)
+
+        # Smooth the mask
+        mask = mask.filter(ImageFilter.GaussianBlur(2))
+        mask = mask.point(lambda x: 255 if x > 128 else 0)
+
+        return mask
 
     def create_base_mannequin(self) -> Image.Image:
-        """Create a realistic 3D-looking mannequin"""
-        width, height = self.MANNEQUIN_SIZE
-        mannequin = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+        """Create a realistic mannequin silhouette"""
+        mannequin = Image.new('RGBA', self.MANNEQUIN_SIZE, (0, 0, 0, 0))
 
-        # Draw body parts with 3D shading
-        self._draw_body_3d(mannequin)
+        # Create body mask
+        body_mask = self.create_body_mask()
+
+        # Create base body color with subtle gradient
+        body_layer = self._create_body_with_shading()
+
+        # Apply mask to body
+        mannequin.paste(body_layer, (0, 0), body_mask)
+
+        # Smooth edges
+        mannequin = self._smooth_edges(mannequin)
 
         return mannequin
 
-    def _draw_body_3d(self, image: Image.Image):
-        """Draw the mannequin body with 3D shading effects"""
-        draw = ImageDraw.Draw(image)
+    def _create_body_with_shading(self) -> Image.Image:
+        """Create body with natural shading"""
+        width, height = self.MANNEQUIN_SIZE
+        body = Image.new('RGB', (width, height), self.base_color)
+        draw = ImageDraw.Draw(body)
 
-        # Draw in order: legs, arms, torso, head
-        self._draw_legs_3d(draw, image)
-        self._draw_arms_3d(draw, image)
-        self._draw_torso_3d(draw, image)
-        self._draw_head_3d(draw, image)
+        # Add subtle vertical gradient for 3D effect
+        base_r, base_g, base_b = self.base_color
 
-        # Apply overall smoothing
-        smoothed = image.filter(ImageFilter.SMOOTH_MORE)
-        image.paste(smoothed)
+        for y in range(height):
+            # Darker at edges, lighter in center vertically
+            factor = 1.0 - abs(y / height - 0.5) * 0.15
 
-    def _draw_ellipse_3d(self, draw: ImageDraw.Draw, bbox: tuple,
-                          direction: str = 'center'):
-        """Draw an ellipse with 3D gradient effect"""
-        x1, y1, x2, y2 = bbox
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        rx, ry = (x2 - x1) // 2, (y2 - y1) // 2
+            for x in range(width):
+                # Horizontal shading - lighter in center
+                x_factor = 1.0 - abs(x / width - 0.5) * 0.1
+                combined_factor = factor * x_factor
 
-        # Draw base shape
-        draw.ellipse(bbox, fill=self.colors['base'])
+                r = int(min(255, base_r * combined_factor))
+                g = int(min(255, base_g * combined_factor))
+                b = int(min(255, base_b * combined_factor))
 
-        # Add highlight (top-left)
-        highlight_offset = -rx // 4, -ry // 4
-        highlight_bbox = (
-            cx + highlight_offset[0] - rx // 3,
-            cy + highlight_offset[1] - ry // 3,
-            cx + highlight_offset[0] + rx // 3,
-            cy + highlight_offset[1] + ry // 3
-        )
-        draw.ellipse(highlight_bbox, fill=self.colors['highlight'])
+                draw.point((x, y), fill=(r, g, b))
 
-        # Add shadow (bottom-right)
-        shadow_offset = rx // 4, ry // 4
-        shadow_bbox = (
-            cx + shadow_offset[0] - rx // 2,
-            cy + shadow_offset[1] - ry // 2,
-            cx + shadow_offset[0] + rx // 2,
-            cy + shadow_offset[1] + ry // 2
-        )
+        # Apply slight blur for smooth gradient
+        body = body.filter(ImageFilter.GaussianBlur(3))
 
-    def _draw_limb_3d(self, draw: ImageDraw.Draw, start: tuple, end: tuple,
-                       width: int, image: Image.Image):
-        """Draw a limb segment with 3D cylindrical shading"""
-        x1, y1 = start
-        x2, y2 = end
+        return body
 
-        # Calculate perpendicular direction
-        dx, dy = x2 - x1, y2 - y1
-        length = math.sqrt(dx * dx + dy * dy)
-        if length == 0:
-            return
+    def _smooth_edges(self, image: Image.Image) -> Image.Image:
+        """Smooth the edges of the mannequin for realistic appearance"""
+        # Get alpha channel
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
 
-        nx, ny = -dy / length, dx / length
+        r, g, b, a = image.split()
 
-        # Create polygon points for limb
-        hw = width // 2
-        points = [
-            (x1 + nx * hw, y1 + ny * hw),
-            (x2 + nx * hw, y2 + ny * hw),
-            (x2 - nx * hw, y2 - ny * hw),
-            (x1 - nx * hw, y1 - ny * hw)
-        ]
+        # Blur alpha slightly for anti-aliasing
+        a = a.filter(ImageFilter.GaussianBlur(1))
 
-        # Draw base limb
-        draw.polygon(points, fill=self.colors['base'])
+        # Recombine
+        return Image.merge('RGBA', (r, g, b, a))
 
-        # Draw highlight stripe (shifted left)
-        highlight_points = [
-            (x1 + nx * hw * 0.7, y1 + ny * hw * 0.7),
-            (x2 + nx * hw * 0.7, y2 + ny * hw * 0.7),
-            (x2 + nx * hw * 0.2, y2 + ny * hw * 0.2),
-            (x1 + nx * hw * 0.2, y1 + ny * hw * 0.2)
-        ]
-        draw.polygon(highlight_points, fill=self.colors['highlight'])
-
-        # Draw shadow stripe (shifted right)
-        shadow_points = [
-            (x1 - nx * hw * 0.2, y1 - ny * hw * 0.2),
-            (x2 - nx * hw * 0.2, y2 - ny * hw * 0.2),
-            (x2 - nx * hw * 0.8, y2 - ny * hw * 0.8),
-            (x1 - nx * hw * 0.8, y1 - ny * hw * 0.8)
-        ]
-        draw.polygon(shadow_points, fill=self.colors['shadow'])
-
-        # Round the ends
-        draw.ellipse([x1 - hw, y1 - hw, x1 + hw, y1 + hw], fill=self.colors['base'])
-        draw.ellipse([x2 - hw, y2 - hw, x2 + hw, y2 + hw], fill=self.colors['base'])
-
-    def _draw_head_3d(self, draw: ImageDraw.Draw, image: Image.Image):
-        """Draw head with 3D shading"""
-        head = self.segments['head']
-        cx, cy = head['center']
-        w, h = head['width'], head['height']
-
-        # Head base (oval)
-        head_bbox = (cx - w, cy - h, cx + w, cy + h)
-        draw.ellipse(head_bbox, fill=self.colors['base'])
-
-        # Highlight on forehead
-        highlight_bbox = (cx - w * 0.5, cy - h * 0.8, cx + w * 0.3, cy - h * 0.2)
-        draw.ellipse(highlight_bbox, fill=self.colors['highlight'])
-
-        # Shadow on sides
-        left_shadow = (cx - w * 0.95, cy - h * 0.3, cx - w * 0.6, cy + h * 0.5)
-        draw.ellipse(left_shadow, fill=self.colors['shadow'])
-
-        # Neck
-        neck = self.segments['neck']
-        nx, ny = neck['center']
-        nw, nh = neck['width'], neck['height']
-        draw.rectangle([nx - nw, ny - nh, nx + nw, ny + nh], fill=self.colors['base'])
-
-        # Neck shadow
-        draw.rectangle([nx + nw * 0.3, ny - nh, nx + nw, ny + nh], fill=self.colors['shadow'])
-
-    def _draw_torso_3d(self, draw: ImageDraw.Draw, image: Image.Image):
-        """Draw torso with 3D muscular/curved shading"""
-        # Shoulders
-        shoulders = self.segments['shoulders']
-        sx, sy = shoulders['center']
-        sw, sh = shoulders['width'], shoulders['height']
-
-        # Shoulder bar
-        draw.rounded_rectangle(
-            [sx - sw, sy - sh, sx + sw, sy + sh],
-            radius=sh,
-            fill=self.colors['base']
-        )
-
-        # Chest
-        chest = self.segments['chest']
-        cx, cy = chest['center']
-        cw, ch = chest['width'], chest['height']
-
-        # Main chest shape
-        chest_points = [
-            (cx - sw, sy),
-            (cx + sw, sy),
-            (cx + cw, cy + ch * 0.3),
-            (cx + cw * 0.8, cy + ch),
-            (cx - cw * 0.8, cy + ch),
-            (cx - cw, cy + ch * 0.3)
-        ]
-        draw.polygon(chest_points, fill=self.colors['base'])
-
-        # Chest highlight (center)
-        draw.ellipse(
-            [cx - cw * 0.4, cy - ch * 0.3, cx + cw * 0.4, cy + ch * 0.4],
-            fill=self.colors['highlight']
-        )
-
-        # Side shadows
-        draw.polygon([
-            (cx - cw, cy + ch * 0.3),
-            (cx - cw * 0.7, cy - ch * 0.2),
-            (cx - cw * 0.7, cy + ch * 0.8),
-            (cx - cw * 0.8, cy + ch)
-        ], fill=self.colors['shadow'])
-
-        draw.polygon([
-            (cx + cw, cy + ch * 0.3),
-            (cx + cw * 0.7, cy - ch * 0.2),
-            (cx + cw * 0.7, cy + ch * 0.8),
-            (cx + cw * 0.8, cy + ch)
-        ], fill=self.colors['shadow'])
-
-        # Waist
-        waist = self.segments['waist']
-        wx, wy = waist['center']
-        ww, wh = waist['width'], waist['height']
-
-        draw.rounded_rectangle(
-            [wx - ww, wy - wh, wx + ww, wy + wh],
-            radius=10,
-            fill=self.colors['base']
-        )
-
-        # Hips
-        hips = self.segments['hips']
-        hx, hy = hips['center']
-        hw, hh = hips['width'], hips['height']
-
-        hip_points = [
-            (hx - ww, wy),
-            (hx + ww, wy),
-            (hx + hw, hy + hh * 0.5),
-            (hx + hw * 0.7, hy + hh),
-            (hx - hw * 0.7, hy + hh),
-            (hx - hw, hy + hh * 0.5)
-        ]
-        draw.polygon(hip_points, fill=self.colors['base'])
-
-    def _draw_arms_3d(self, draw: ImageDraw.Draw, image: Image.Image):
-        """Draw arms with 3D shading"""
-        for side in ['left', 'right']:
-            # Upper arm
-            upper = self.segments[f'{side}_arm_upper']
-            self._draw_limb_3d(draw, upper['start'], upper['end'], upper['width'], image)
-
-            # Lower arm
-            lower = self.segments[f'{side}_arm_lower']
-            self._draw_limb_3d(draw, lower['start'], lower['end'], lower['width'], image)
-
-            # Hand
-            hx, hy = lower['end']
-            hw = lower['width']
-            draw.ellipse([hx - hw, hy - hw * 0.5, hx + hw, hy + hw * 1.2],
-                         fill=self.colors['base'])
-
-    def _draw_legs_3d(self, draw: ImageDraw.Draw, image: Image.Image):
-        """Draw legs with 3D shading"""
-        for side in ['left', 'right']:
-            # Upper leg
-            upper = self.segments[f'{side}_leg_upper']
-            self._draw_limb_3d(draw, upper['start'], upper['end'], upper['width'], image)
-
-            # Lower leg
-            lower = self.segments[f'{side}_leg_lower']
-            self._draw_limb_3d(draw, lower['start'], lower['end'], lower['width'], image)
-
-            # Foot
-            foot = self.segments[f'{side}_foot']
-            fx, fy = foot['center']
-            fw, fh = foot['width'], foot['height']
-            draw.ellipse([fx - fw, fy - fh, fx + fw, fy + fh], fill=self.colors['base'])
-
-    def apply_clothing_warp(self, clothing: Image.Image, clothing_type: str) -> Image.Image:
-        """Apply perspective warp to make clothing look naturally worn"""
+    def _fit_clothing_to_body(self, clothing: Image.Image,
+                               clothing_type: str) -> Image.Image:
+        """
+        Fit clothing to body shape with natural draping effect
+        """
         if clothing_type.lower() not in self.regions:
             return clothing
 
         region = self.regions[clothing_type.lower()]
-        bounds = region['bounds']
-        target_width = bounds[2] - bounds[0]
-        target_height = bounds[3] - bounds[1]
 
-        # Resize to target dimensions
+        # Calculate target dimensions
+        target_width = region['right'] - region['left']
+        target_height = region['bottom'] - region['top']
+
+        # Ensure clothing has alpha channel
+        if clothing.mode != 'RGBA':
+            clothing = clothing.convert('RGBA')
+
+        # Resize clothing to fit region
         clothing = clothing.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
-        # Apply perspective transformation
-        perspective = region.get('perspective', 0)
-        curve = region.get('curve_intensity', 0)
+        # Apply body-conforming warp for shirts/pants
+        if clothing_type.lower() in ['shirt', 'top', 'pants', 'bottom', 'jacket']:
+            clothing = self._apply_body_contour_warp(clothing, region)
 
-        if perspective > 0 or curve > 0:
-            clothing = self._apply_body_curve(clothing, perspective, curve)
+        # Add natural fabric shadows
+        clothing = self._add_fabric_shadows(clothing)
 
         return clothing
 
-    def _apply_body_curve(self, image: Image.Image, perspective: float,
-                           curve_intensity: float) -> Image.Image:
-        """Apply subtle curve to simulate clothing wrapping around body"""
+    def _apply_body_contour_warp(self, image: Image.Image,
+                                   region: dict) -> Image.Image:
+        """Apply warp to make clothing follow body contours"""
+        width, height = image.size
+        result = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+
+        # Get body width variation
+        top_width = region.get('body_width_at_top', width)
+        bottom_width = region.get('body_width_at_bottom', width)
+        center_x = width // 2
+
+        for y in range(height):
+            # Calculate body width at this height (linear interpolation)
+            progress = y / height
+            body_width = top_width + (bottom_width - top_width) * progress
+
+            # Scale factor for this row
+            scale = body_width / width
+
+            for x in range(width):
+                # Calculate source x position
+                x_offset = x - center_x
+                source_x = int(center_x + x_offset / scale) if scale > 0 else x
+
+                # Apply subtle curve for body roundness
+                curve_amount = 0.03
+                normalized_x = (x - center_x) / (width / 2) if width > 0 else 0
+                curve_offset = int(curve_amount * height * (1 - normalized_x ** 2) * (0.5 - abs(progress - 0.5)))
+                source_y = y - curve_offset
+
+                # Clamp source coordinates
+                source_x = max(0, min(width - 1, source_x))
+                source_y = max(0, min(height - 1, source_y))
+
+                # Copy pixel
+                pixel = image.getpixel((source_x, source_y))
+                if pixel[3] > 0:
+                    result.putpixel((x, y), pixel)
+
+        return result
+
+    def _add_fabric_shadows(self, image: Image.Image,
+                             intensity: float = 0.15) -> Image.Image:
+        """Add subtle shadows to simulate fabric folds"""
         if image.mode != 'RGBA':
             image = image.convert('RGBA')
 
         width, height = image.size
-        result = Image.new('RGBA', (width, height), (0, 0, 0, 0))
 
-        # Create curved displacement
-        for y in range(height):
-            # Calculate horizontal displacement based on vertical position
-            # Creates a subtle barrel/pincushion effect
-            y_normalized = (y / height - 0.5) * 2  # -1 to 1
+        # Create shadow overlay
+        shadow = Image.new('RGBA', (width, height), (0, 0, 0, 0))
 
-            for x in range(width):
-                x_normalized = (x / width - 0.5) * 2  # -1 to 1
+        # Add vertical fold shadows
+        for x in range(width):
+            # Create wave pattern for fold simulation
+            fold_factor = math.sin(x / width * math.pi * 4) * 0.5 + 0.5
+            shadow_alpha = int(30 * fold_factor * intensity)
 
-                # Apply curve (makes center bulge slightly)
-                curve_factor = 1 - curve_intensity * (x_normalized ** 2)
-                new_x = int((x_normalized * curve_factor + 1) * width / 2)
+            for y in range(height):
+                current = image.getpixel((x, y))
+                if current[3] > 0:  # Only apply to non-transparent pixels
+                    shadow.putpixel((x, y), (0, 0, 0, shadow_alpha))
 
-                # Apply perspective (slight trapezoid effect)
-                persp_scale = 1 - perspective * abs(y_normalized)
-                new_x = int(width / 2 + (new_x - width / 2) * persp_scale)
+        # Blur shadows for natural look
+        shadow = shadow.filter(ImageFilter.GaussianBlur(5))
 
-                # Clamp coordinates
-                new_x = max(0, min(width - 1, new_x))
-
-                # Copy pixel
-                if 0 <= new_x < width:
-                    pixel = image.getpixel((x, y))
-                    if pixel[3] > 0:  # Only copy non-transparent pixels
-                        result.putpixel((new_x, y), pixel)
-
-        # Smooth the result to reduce artifacts
-        result = result.filter(ImageFilter.SMOOTH)
-
-        return result
-
-    def _add_clothing_shadows(self, clothing: Image.Image,
-                               intensity: float = 0.3) -> Image.Image:
-        """Add shadows to clothing edges for depth"""
-        if clothing.mode != 'RGBA':
-            clothing = clothing.convert('RGBA')
-
-        # Create shadow layer
-        shadow = Image.new('RGBA', clothing.size, (0, 0, 0, 0))
-        shadow_draw = ImageDraw.Draw(shadow)
-
-        # Get alpha channel
-        alpha = clothing.split()[3]
-
-        # Create edge shadow
-        edge_shadow = alpha.filter(ImageFilter.FIND_EDGES)
-        edge_shadow = edge_shadow.filter(ImageFilter.GaussianBlur(3))
-
-        # Apply shadow
-        shadow_array = list(edge_shadow.getdata())
-        shadow_pixels = [(0, 0, 0, int(p * intensity)) for p in shadow_array]
-        shadow.putdata(shadow_pixels)
-
-        # Composite
-        result = Image.alpha_composite(clothing, shadow)
-
-        return result
+        # Composite shadow onto image
+        return Image.alpha_composite(image, shadow)
 
     def overlay_clothing(self, mannequin: Image.Image,
                           clothing_items: Dict[str, Image.Image]) -> Image.Image:
-        """Overlay clothing items with realistic positioning and warping"""
+        """Overlay clothing items with realistic fitting"""
         result = mannequin.copy()
 
         # Sort by layer order
-        sorted_items = sorted(clothing_items.items(),
-                               key=lambda x: self.LAYER_ORDER.get(x[0].lower(), 5))
+        sorted_items = sorted(
+            clothing_items.items(),
+            key=lambda x: self.LAYER_ORDER.get(x[0].lower(), 5)
+        )
 
         for clothing_type, clothing_img in sorted_items:
             clothing_type_lower = clothing_type.lower()
@@ -601,76 +696,83 @@ class MannequinRenderer:
 
             region = self.regions[clothing_type_lower]
 
-            # Apply warping for realistic fit
-            warped = self.apply_clothing_warp(clothing_img, clothing_type_lower)
+            # Fit clothing to body
+            fitted = self._fit_clothing_to_body(clothing_img, clothing_type_lower)
 
-            # Add shadows for depth
-            warped = self._add_clothing_shadows(warped, 0.2)
+            # Calculate paste position
+            paste_x = region['left']
+            paste_y = region['top']
 
-            # Calculate position
-            bounds = region['bounds']
-            paste_x = bounds[0]
-            paste_y = bounds[1]
-
-            # Ensure RGBA mode
-            if warped.mode != 'RGBA':
-                warped = warped.convert('RGBA')
+            # Ensure RGBA
+            if fitted.mode != 'RGBA':
+                fitted = fitted.convert('RGBA')
 
             # Paste with transparency
-            result.paste(warped, (paste_x, paste_y), warped)
+            result.paste(fitted, (paste_x, paste_y), fitted)
 
         return result
 
     def render_outfit(self, clothing_items: Dict[str, Image.Image],
-                       background_color: Tuple[int, int, int] = (248, 249, 250)) -> Image.Image:
-        """Render complete outfit with professional background"""
+                       background_color: Tuple[int, int, int] = (245, 243, 240)) -> Image.Image:
+        """Render complete outfit with clean background"""
         # Create mannequin
         mannequin = self.create_base_mannequin()
 
         # Overlay clothing
         dressed = self.overlay_clothing(mannequin, clothing_items)
 
-        # Create gradient background
-        final = self._create_gradient_background(background_color)
+        # Create clean background
+        final = Image.new('RGB', self.MANNEQUIN_SIZE, background_color)
 
-        # Add subtle shadow under mannequin
-        final = self._add_floor_shadow(final)
+        # Add very subtle gradient
+        final = self._add_subtle_background_gradient(final, background_color)
 
         # Paste dressed mannequin
         final.paste(dressed, (0, 0), dressed)
 
+        # Add subtle ground shadow
+        final = self._add_ground_shadow(final)
+
         return final
 
-    def _create_gradient_background(self,
-                                     base_color: Tuple[int, int, int]) -> Image.Image:
-        """Create subtle gradient background"""
-        width, height = self.MANNEQUIN_SIZE
-        bg = Image.new('RGB', (width, height), base_color)
-        draw = ImageDraw.Draw(bg)
+    def _add_subtle_background_gradient(self, image: Image.Image,
+                                          base_color: Tuple[int, int, int]) -> Image.Image:
+        """Add very subtle radial gradient to background"""
+        width, height = image.size
+        draw = ImageDraw.Draw(image)
 
-        # Create vertical gradient (lighter at top)
+        center_x, center_y = width // 2, height // 2
+        max_dist = math.sqrt(center_x ** 2 + center_y ** 2)
+
         for y in range(height):
-            factor = 1 - (y / height) * 0.08
-            color = tuple(int(c * factor) for c in base_color)
-            draw.line([(0, y), (width, y)], fill=color)
+            for x in range(width):
+                dist = math.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+                factor = 1 - (dist / max_dist) * 0.05  # Very subtle
 
-        return bg
+                r = int(base_color[0] * factor)
+                g = int(base_color[1] * factor)
+                b = int(base_color[2] * factor)
 
-    def _add_floor_shadow(self, image: Image.Image) -> Image.Image:
-        """Add subtle floor shadow for grounding effect"""
+                draw.point((x, y), fill=(r, g, b))
+
+        return image
+
+    def _add_ground_shadow(self, image: Image.Image) -> Image.Image:
+        """Add subtle shadow at the feet for grounding"""
         draw = ImageDraw.Draw(image)
         width, height = image.size
 
-        # Elliptical shadow at bottom
-        shadow_y = height - 60
-        for i in range(30):
-            alpha = int(40 * (1 - i / 30))
-            y_offset = shadow_y + i
-            ellipse_width = 120 + i * 2
+        # Shadow ellipse at bottom
+        shadow_y = height - 40
+        for i in range(20):
+            alpha = int(25 * (1 - i / 20))
+            gray = 200 - alpha // 2
+
+            ellipse_width = 80 + i * 3
             draw.ellipse(
-                [width // 2 - ellipse_width, y_offset - 10,
-                 width // 2 + ellipse_width, y_offset + 10],
-                fill=(200, 200, 200)
+                [width // 2 - ellipse_width, shadow_y + i - 5,
+                 width // 2 + ellipse_width, shadow_y + i + 5],
+                fill=(gray, gray, gray)
             )
 
         return image
@@ -679,7 +781,7 @@ class MannequinRenderer:
                                       item_to_change: str,
                                       new_color: Tuple[int, int, int],
                                       image_processor) -> Image.Image:
-        """Render with color variation applied to specific item"""
+        """Render with color variation applied"""
         modified_items = clothing_items.copy()
 
         if item_to_change in modified_items:
@@ -692,11 +794,11 @@ class MannequinRenderer:
     def create_comparison_image(self, original: Image.Image,
                                  variations: list,
                                  labels: list = None) -> Image.Image:
-        """Create side-by-side comparison with labels"""
+        """Create side-by-side comparison"""
         num_images = 1 + len(variations)
-        gap = 20
+        gap = 30
         total_width = self.MANNEQUIN_SIZE[0] * num_images + gap * (num_images - 1)
-        label_height = 40
+        label_height = 50
         total_height = self.MANNEQUIN_SIZE[1] + label_height
 
         comparison = Image.new('RGB', (total_width, total_height), (255, 255, 255))
@@ -704,17 +806,17 @@ class MannequinRenderer:
 
         # Paste original
         comparison.paste(original, (0, label_height))
-        if labels:
-            draw.text((self.MANNEQUIN_SIZE[0] // 2, 15), labels[0] if labels else "Original",
-                      fill=(60, 60, 60), anchor="mm")
+        if labels and len(labels) > 0:
+            text_x = self.MANNEQUIN_SIZE[0] // 2
+            draw.text((text_x, 20), labels[0], fill=(60, 60, 60), anchor="mm")
 
         # Paste variations
         x_offset = self.MANNEQUIN_SIZE[0] + gap
         for idx, variation in enumerate(variations):
             comparison.paste(variation, (x_offset, label_height))
             if labels and idx + 1 < len(labels):
-                draw.text((x_offset + self.MANNEQUIN_SIZE[0] // 2, 15),
-                          labels[idx + 1], fill=(60, 60, 60), anchor="mm")
+                text_x = x_offset + self.MANNEQUIN_SIZE[0] // 2
+                draw.text((text_x, 20), labels[idx + 1], fill=(60, 60, 60), anchor="mm")
             x_offset += self.MANNEQUIN_SIZE[0] + gap
 
         return comparison
@@ -727,12 +829,12 @@ class MannequinRenderer:
         return buffer.getvalue()
 
     def set_gender(self, gender: str):
-        """Update gender"""
+        """Update gender setting"""
         self.gender = gender.lower()
-        self.segments = self.BODY_SEGMENTS.get(self.gender, self.BODY_SEGMENTS['male'])
-        self.regions = self.CLOTHING_REGIONS.get(self.gender, self.CLOTHING_REGIONS['male'])
+        self.body_shape = self.BODY_SHAPES.get(self.gender, self.BODY_SHAPES['female'])
+        self.regions = self.CLOTHING_REGIONS.get(self.gender, self.CLOTHING_REGIONS['female'])
 
     def set_skin_tone(self, skin_tone: str):
         """Update skin tone"""
         self.skin_tone = skin_tone.lower()
-        self.colors = self.MANNEQUIN_COLORS.get(self.skin_tone, self.MANNEQUIN_COLORS['medium'])
+        self.base_color = self.SKIN_TONES.get(self.skin_tone, self.SKIN_TONES['medium'])

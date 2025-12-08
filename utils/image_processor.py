@@ -4,7 +4,7 @@ Handles background removal, image resizing, and clothing segmentation
 """
 
 import io
-from PIL import Image
+from PIL import Image, ImageFilter, ImageEnhance
 import numpy as np
 
 try:
@@ -31,21 +31,77 @@ class ImageProcessor:
             PIL Image with transparent background
         """
         if not REMBG_AVAILABLE:
-            # Fallback: return image as-is with alpha channel
-            if image.mode != 'RGBA':
-                image = image.convert('RGBA')
-            return image
+            # Fallback: attempt simple background removal
+            return self._simple_background_removal(image)
 
         # Convert to bytes for rembg
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
 
-        # Remove background
-        output = remove(img_byte_arr.getvalue())
+        # Remove background with high quality settings
+        output = remove(
+            img_byte_arr.getvalue(),
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=240,
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=10
+        )
 
         # Convert back to PIL Image
-        return Image.open(io.BytesIO(output))
+        result = Image.open(io.BytesIO(output))
+
+        # Clean up edges
+        result = self._refine_edges(result)
+
+        return result
+
+    def _simple_background_removal(self, image: Image.Image) -> Image.Image:
+        """Simple background removal fallback when rembg is not available"""
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+
+        # Get image data
+        data = np.array(image)
+
+        # Detect near-white or light gray backgrounds
+        r, g, b, a = data[:, :, 0], data[:, :, 1], data[:, :, 2], data[:, :, 3]
+
+        # Create mask for background (light colors)
+        brightness = (r.astype(float) + g.astype(float) + b.astype(float)) / 3
+        bg_mask = brightness > 230
+
+        # Also check for uniform color regions (likely background)
+        color_variance = np.std([r, g, b], axis=0)
+        uniform_mask = color_variance < 20
+
+        # Combine masks
+        combined_mask = bg_mask & uniform_mask
+
+        # Set background to transparent
+        data[:, :, 3] = np.where(combined_mask, 0, 255).astype(np.uint8)
+
+        return Image.fromarray(data, 'RGBA')
+
+    def _refine_edges(self, image: Image.Image) -> Image.Image:
+        """Refine the edges of a cutout image for cleaner appearance"""
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+
+        # Split channels
+        r, g, b, a = image.split()
+
+        # Slightly erode then dilate alpha to clean edges
+        a = a.filter(ImageFilter.MinFilter(3))
+        a = a.filter(ImageFilter.MaxFilter(3))
+
+        # Smooth alpha edges
+        a = a.filter(ImageFilter.GaussianBlur(1))
+
+        # Threshold to remove semi-transparent pixels at edges
+        a = a.point(lambda x: 255 if x > 128 else 0)
+
+        return Image.merge('RGBA', (r, g, b, a))
 
     def resize_clothing(self, image: Image.Image, target_size: tuple,
                         maintain_aspect: bool = True) -> Image.Image:
@@ -61,12 +117,26 @@ class ImageProcessor:
             Resized PIL Image
         """
         if maintain_aspect:
-            image.thumbnail(target_size, Image.Resampling.LANCZOS)
+            # Calculate aspect ratio preserving size
+            img_ratio = image.width / image.height
+            target_ratio = target_size[0] / target_size[1]
+
+            if img_ratio > target_ratio:
+                # Image is wider - fit to width
+                new_width = target_size[0]
+                new_height = int(new_width / img_ratio)
+            else:
+                # Image is taller - fit to height
+                new_height = target_size[1]
+                new_width = int(new_height * img_ratio)
+
+            resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
             # Create new image with target size and paste centered
             new_img = Image.new('RGBA', target_size, (0, 0, 0, 0))
-            paste_x = (target_size[0] - image.width) // 2
-            paste_y = (target_size[1] - image.height) // 2
-            new_img.paste(image, (paste_x, paste_y), image if image.mode == 'RGBA' else None)
+            paste_x = (target_size[0] - new_width) // 2
+            paste_y = (target_size[1] - new_height) // 2
+            new_img.paste(resized, (paste_x, paste_y), resized if resized.mode == 'RGBA' else None)
             return new_img
         else:
             return image.resize(target_size, Image.Resampling.LANCZOS)
@@ -88,19 +158,24 @@ class ImageProcessor:
         # Remove background first
         processed = self.remove_background(image)
 
+        # Enhance contrast slightly for better visibility
+        enhancer = ImageEnhance.Contrast(processed)
+        processed = enhancer.enhance(1.1)
+
         # Define target sizes based on clothing type (relative to mannequin)
         size_ratios = {
-            'shirt': (0.65, 0.35),
-            'top': (0.65, 0.35),
-            'pants': (0.55, 0.45),
-            'bottom': (0.55, 0.45),
-            'jacket': (0.70, 0.40),
-            'tie': (0.15, 0.30),
-            'shoes': (0.35, 0.15),
-            'watch': (0.10, 0.10),
-            'belt': (0.40, 0.05),
-            'scarf': (0.30, 0.25),
-            'accessory': (0.20, 0.20)
+            'shirt': (0.55, 0.32),
+            'top': (0.55, 0.32),
+            'pants': (0.45, 0.52),
+            'bottom': (0.45, 0.52),
+            'jacket': (0.65, 0.40),
+            'tie': (0.12, 0.28),
+            'shoes': (0.38, 0.08),
+            'watch': (0.08, 0.06),
+            'belt': (0.28, 0.04),
+            'scarf': (0.35, 0.14),
+            'bag': (0.22, 0.25),
+            'accessory': (0.18, 0.18)
         }
 
         ratio = size_ratios.get(clothing_type.lower(), (0.5, 0.5))
@@ -122,8 +197,8 @@ class ImageProcessor:
         """
         # Convert to RGB if necessary
         if image.mode != 'RGB':
-            # Handle RGBA by compositing on white background
             if image.mode == 'RGBA':
+                # Only consider non-transparent pixels
                 background = Image.new('RGB', image.size, (255, 255, 255))
                 background.paste(image, mask=image.split()[3])
                 image = background
@@ -131,21 +206,20 @@ class ImageProcessor:
                 image = image.convert('RGB')
 
         # Resize for faster processing
-        image = image.resize((150, 150), Image.Resampling.LANCZOS)
+        image = image.resize((100, 100), Image.Resampling.LANCZOS)
 
         # Get pixel data
         pixels = list(image.getdata())
 
-        # Simple color clustering (k-means lite)
         from collections import Counter
 
         # Quantize colors to reduce unique colors
-        quantized = [(r // 32 * 32, g // 32 * 32, b // 32 * 32) for r, g, b in pixels]
+        quantized = [(r // 24 * 24, g // 24 * 24, b // 24 * 24) for r, g, b in pixels]
 
         # Filter out near-white and near-black (often background)
         filtered = [c for c in quantized if not (
-            (c[0] > 240 and c[1] > 240 and c[2] > 240) or
-            (c[0] < 15 and c[1] < 15 and c[2] < 15)
+            (c[0] > 230 and c[1] > 230 and c[2] > 230) or
+            (c[0] < 20 and c[1] < 20 and c[2] < 20)
         )]
 
         if not filtered:
@@ -185,9 +259,12 @@ class ImageProcessor:
         lum_normalized = luminance / 255.0
 
         # Apply target color with luminance preservation
-        new_r = target_color[0] * lum_normalized
-        new_g = target_color[1] * lum_normalized
-        new_b = target_color[2] * lum_normalized
+        # Add slight variation to preserve texture
+        texture_factor = 0.85
+
+        new_r = target_color[0] * (texture_factor * lum_normalized + (1 - texture_factor) * (r / 255))
+        new_g = target_color[1] * (texture_factor * lum_normalized + (1 - texture_factor) * (g / 255))
+        new_b = target_color[2] * (texture_factor * lum_normalized + (1 - texture_factor) * (b / 255))
 
         # Clip values and convert back
         new_r = np.clip(new_r, 0, 255).astype(np.uint8)
@@ -217,3 +294,27 @@ class ImageProcessor:
             # Convert to grayscale and threshold
             gray = image.convert('L')
             return gray.point(lambda x: 255 if x > 10 else 0)
+
+    def enhance_clothing_image(self, image: Image.Image) -> Image.Image:
+        """
+        Enhance clothing image for better display
+
+        Args:
+            image: PIL Image
+
+        Returns:
+            Enhanced PIL Image
+        """
+        # Slight sharpening
+        image = image.filter(ImageFilter.UnsharpMask(radius=1, percent=50))
+
+        # Slight contrast boost
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(1.05)
+
+        # Slight saturation boost
+        if image.mode in ['RGB', 'RGBA']:
+            enhancer = ImageEnhance.Color(image)
+            image = enhancer.enhance(1.05)
+
+        return image
