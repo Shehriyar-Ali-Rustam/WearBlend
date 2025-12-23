@@ -1,6 +1,6 @@
 """
 WearBlend - Virtual Try-On Application
-Professional Flat-Lay Style Outfit Composer
+Realistic Mannequin Visualization
 """
 
 import streamlit as st
@@ -11,7 +11,7 @@ from typing import Dict, Optional, Tuple
 from utils.image_processor import ImageProcessor
 from utils.color_utils import ColorUtils
 from utils.style_engine import StyleEngine
-from utils.outfit_composer import OutfitComposer, OutfitStyler
+from utils.realistic_mannequin import RealisticMannequin
 
 # Page configuration
 st.set_page_config(
@@ -244,8 +244,8 @@ def initialize_session_state():
         'processed_items': {},
         'dominant_colors': {},
         'selected_variation': None,
-        'background_preset': 'neutral',
-        'composition_style': 'classic',
+        'gender': 'male',
+        'skin_tone': 'medium',
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -257,7 +257,7 @@ def render_main_page():
     st.markdown("""
     <div class="main-header">
         <h1>WearBlend</h1>
-        <p>Professional Outfit Composer - Create stunning flat-lay style outfit visuals</p>
+        <p>Virtual Try-On - See how clothes look on a realistic mannequin</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -265,12 +265,55 @@ def render_main_page():
     image_processor = ImageProcessor()
     style_engine = StyleEngine()
     color_utils = ColorUtils()
-    composer = OutfitComposer(style=st.session_state.composition_style)
+    mannequin = RealisticMannequin(gender=st.session_state.gender, skin_tone=st.session_state.skin_tone)
 
     # Main layout - two columns
     col_upload, col_preview = st.columns([1, 1.2])
 
     with col_upload:
+        # Mannequin Settings Section
+        st.markdown('<p class="section-title">Mannequin Settings</p>', unsafe_allow_html=True)
+
+        # Gender selection
+        gender_col1, gender_col2 = st.columns(2)
+        with gender_col1:
+            if st.button("Male", use_container_width=True,
+                        type="primary" if st.session_state.gender == 'male' else "secondary"):
+                st.session_state.gender = 'male'
+                st.rerun()
+        with gender_col2:
+            if st.button("Female", use_container_width=True,
+                        type="primary" if st.session_state.gender == 'female' else "secondary"):
+                st.session_state.gender = 'female'
+                st.rerun()
+
+        # Skin tone selection
+        st.markdown("**Skin Tone**")
+        skin_tones = {
+            'light': '#f0dfcf',
+            'medium': '#ddc3ac',
+            'tan': '#c39e80',
+            'dark': '#8c644b',
+            'deep': '#5a3c2d'
+        }
+
+        tone_cols = st.columns(5)
+        for col, (tone, color) in zip(tone_cols, skin_tones.items()):
+            with col:
+                selected = st.session_state.skin_tone == tone
+                border = f"3px solid {COLORS['primary']}" if selected else "3px solid transparent"
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <div style="width: 36px; height: 36px; background: {color};
+                                border-radius: 50%; margin: 0 auto; border: {border};"></div>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(tone.title(), key=f"tone_{tone}", use_container_width=True):
+                    st.session_state.skin_tone = tone
+                    st.rerun()
+
+        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
         st.markdown('<p class="section-title">Upload Clothing Items</p>', unsafe_allow_html=True)
 
         # Clothing categories
@@ -285,8 +328,6 @@ def render_main_page():
         accessory_config = [
             ('tie', 'Tie / Neckwear', 'Formal accent'),
             ('belt', 'Belt', 'Waist accessory'),
-            ('bag', 'Bag / Purse', 'Side accessory'),
-            ('scarf', 'Scarf', 'Neck accessory'),
         ]
 
         # Main clothing items
@@ -363,44 +404,24 @@ def render_main_page():
                     st.success(f"{item_label} added")
 
     with col_preview:
-        st.markdown('<p class="section-title">Outfit Preview</p>', unsafe_allow_html=True)
+        st.markdown('<p class="section-title">Mannequin Preview</p>', unsafe_allow_html=True)
 
-        # Background style selector
-        bg_col1, bg_col2 = st.columns(2)
-        with bg_col1:
-            bg_preset = st.selectbox(
-                "Background Style",
-                options=['neutral', 'minimal', 'warm', 'cool', 'pure_white', 'soft_grey'],
-                index=0,
-                format_func=lambda x: x.replace('_', ' ').title()
-            )
-            st.session_state.background_preset = bg_preset
-
-        with bg_col2:
-            comp_style = st.selectbox(
-                "Arrangement Style",
-                options=['classic', 'casual', 'formal'],
-                index=0,
-                format_func=lambda x: x.title()
-            )
-            st.session_state.composition_style = comp_style
-            composer = OutfitComposer(style=comp_style)
+        # Update mannequin with current settings
+        mannequin = RealisticMannequin(
+            gender=st.session_state.gender,
+            skin_tone=st.session_state.skin_tone
+        )
 
         # Generate preview
         if st.session_state.processed_items:
-            background_color = OutfitStyler.get_background_color(st.session_state.background_preset)
-
-            # Compose outfit
-            outfit_image = composer.compose_outfit(
-                st.session_state.processed_items,
-                background_color=background_color
-            )
+            # Render outfit on mannequin
+            outfit_image = mannequin.render_outfit(st.session_state.processed_items)
 
             # Display
             st.image(outfit_image, use_container_width=True)
 
             # Download button
-            img_bytes = composer.get_image_bytes(outfit_image)
+            img_bytes = mannequin.get_image_bytes(outfit_image)
             st.download_button(
                 label="Download Outfit Image",
                 data=img_bytes,
@@ -409,14 +430,10 @@ def render_main_page():
                 use_container_width=True
             )
         else:
-            st.markdown("""
-            <div class="outfit-preview">
-                <div style="text-align: center; color: #636e72;">
-                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">Upload clothing items</p>
-                    <p style="font-size: 0.85rem;">Your outfit will appear here</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Show empty mannequin
+            empty_mannequin = mannequin.render_outfit({})
+            st.image(empty_mannequin, use_container_width=True)
+            st.caption("Upload clothing items to dress the mannequin")
 
     # Style Analysis Section
     if st.session_state.processed_items:
@@ -551,7 +568,7 @@ def render_sidebar():
         st.markdown(f"""
         <div style="padding: 1rem 0;">
             <h2 style="color: {COLORS['primary']}; font-weight: 700; margin: 0;">WearBlend</h2>
-            <p style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Outfit Composer</p>
+            <p style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Virtual Try-On</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -562,7 +579,8 @@ def render_sidebar():
             st.markdown(f"""
             <div class="card">
                 <p style="margin: 0.2rem 0;"><strong>Items:</strong> {len(st.session_state.processed_items)}</p>
-                <p style="margin: 0.2rem 0;"><strong>Style:</strong> {st.session_state.composition_style.title()}</p>
+                <p style="margin: 0.2rem 0;"><strong>Gender:</strong> {st.session_state.gender.title()}</p>
+                <p style="margin: 0.2rem 0;"><strong>Skin:</strong> {st.session_state.skin_tone.title()}</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -571,11 +589,11 @@ def render_sidebar():
         st.markdown("**How It Works**")
         st.markdown(f"""
         <ol style="color: {COLORS['text_secondary']}; font-size: 0.85rem; padding-left: 1.25rem;">
+            <li style="margin: 0.4rem 0;">Select mannequin gender and skin tone</li>
             <li style="margin: 0.4rem 0;">Upload clothing images</li>
             <li style="margin: 0.4rem 0;">Background is removed automatically</li>
-            <li style="margin: 0.4rem 0;">Items arranged into outfit</li>
-            <li style="margin: 0.4rem 0;">Explore color variations</li>
-            <li style="margin: 0.4rem 0;">Download your composition</li>
+            <li style="margin: 0.4rem 0;">Clothes appear on the mannequin</li>
+            <li style="margin: 0.4rem 0;">Download your outfit image</li>
         </ol>
         """, unsafe_allow_html=True)
 
@@ -593,7 +611,7 @@ def render_sidebar():
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
         if st.button("Clear All", use_container_width=True):
-            for key in ['clothing_items', 'processed_items', 'dominant_colors', 'selected_variation']:
+            for key in ['clothing_items', 'processed_items', 'dominant_colors']:
                 st.session_state[key] = {}
             st.rerun()
 
