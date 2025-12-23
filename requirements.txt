@@ -27,6 +27,12 @@ scikit-image>=0.21.0
 requests>=2.31.0
 httpx>=0.25.0
 
+# OpenAI (for AI Try-On feature with GPT-4 Vision and DALL-E)
+openai>=1.0.0
+
+# Google Gemini/Imagen (alternative AI provider for Try-On)
+google-genai>=1.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 

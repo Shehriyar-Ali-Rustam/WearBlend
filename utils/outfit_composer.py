@@ -21,11 +21,11 @@ class OutfitComposer:
     CANVAS_SIZE = (800, 1000)
 
     # Clothing placement zones - positions where each item should be placed
-    # These are designed to create a natural "outfit" appearance
+    # These are designed to create a connected "outfit" appearance with no gaps
     PLACEMENT_ZONES = {
         'shirt': {
             'x': 0.5,           # Center horizontally
-            'y': 0.22,          # Upper portion
+            'y': 0.20,          # Upper portion
             'width': 0.55,      # 55% of canvas width
             'height': 0.32,     # 32% of canvas height
             'z_order': 2,
@@ -34,7 +34,7 @@ class OutfitComposer:
         },
         'top': {
             'x': 0.5,
-            'y': 0.22,
+            'y': 0.20,
             'width': 0.55,
             'height': 0.32,
             'z_order': 2,
@@ -43,7 +43,7 @@ class OutfitComposer:
         },
         'pants': {
             'x': 0.5,
-            'y': 0.62,
+            'y': 0.54,          # Moved up to connect with shirt
             'width': 0.42,
             'height': 0.45,
             'z_order': 1,
@@ -52,7 +52,7 @@ class OutfitComposer:
         },
         'bottom': {
             'x': 0.5,
-            'y': 0.62,
+            'y': 0.54,          # Moved up to connect with shirt
             'width': 0.42,
             'height': 0.45,
             'z_order': 1,
@@ -61,7 +61,7 @@ class OutfitComposer:
         },
         'jacket': {
             'x': 0.5,
-            'y': 0.26,
+            'y': 0.24,
             'width': 0.65,
             'height': 0.40,
             'z_order': 3,
@@ -70,9 +70,9 @@ class OutfitComposer:
         },
         'shoes': {
             'x': 0.5,
-            'y': 0.92,
+            'y': 0.78,          # Moved up significantly to connect with pants
             'width': 0.35,
-            'height': 0.10,
+            'height': 0.12,
             'z_order': 0,
             'rotation': 0,
             'shadow_offset': (4, 6)
@@ -127,18 +127,21 @@ class OutfitComposer:
     # Alternative arrangements for different outfit styles
     STYLE_ARRANGEMENTS = {
         'classic': {
-            # Standard vertical arrangement
-            'shirt_overlap': 0.08,  # How much shirt overlaps into pants area
+            # Standard vertical arrangement - items connected
+            'shirt_overlap': 0.12,  # How much pants overlaps into shirt area
+            'shoes_overlap': 0.02,  # How much shoes overlaps into pants area
             'accessories_spread': 1.0
         },
         'casual': {
             # Slightly angled, more relaxed
-            'shirt_overlap': 0.12,
+            'shirt_overlap': 0.14,
+            'shoes_overlap': 0.03,
             'accessories_spread': 1.2
         },
         'formal': {
             # Precise, centered alignment
-            'shirt_overlap': 0.05,
+            'shirt_overlap': 0.10,
+            'shoes_overlap': 0.02,
             'accessories_spread': 0.8
         }
     }
@@ -237,9 +240,14 @@ class OutfitComposer:
         pos_x = int(canvas_width * zone['x'] - item.width // 2)
         pos_y = int(canvas_height * zone['y'] - item.height // 2)
 
-        # Adjust for shirt-pants overlap
+        # Adjust for shirt-pants overlap (pants moves up to touch shirt)
         if item_type in ['pants', 'bottom']:
             overlap = int(canvas_height * self.arrangement['shirt_overlap'])
+            pos_y -= overlap
+
+        # Adjust for pants-shoes overlap (shoes moves up to touch pants)
+        if item_type in ['shoes']:
+            overlap = int(canvas_height * self.arrangement.get('shoes_overlap', 0.06))
             pos_y -= overlap
 
         # Create shadow
