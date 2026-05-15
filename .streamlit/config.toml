@@ -1,9 +1,10 @@
 [theme]
-primaryColor = "#1a1a2e"
-backgroundColor = "#f8f9fa"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#1a1a2e"
+primaryColor = "#8b5cf6"
+backgroundColor = "#0a0a0f"
+secondaryBackgroundColor = "#13131a"
+textColor = "#f5f5f7"
 font = "sans serif"
+base = "dark"
 
 [server]
 maxUploadSize = 15
@@ -19,5 +20,5 @@ magicEnabled = true
 fastReruns = true
 
 [client]
-showErrorDetails = false
+showErrorDetails = true
 toolbarMode = "minimal"

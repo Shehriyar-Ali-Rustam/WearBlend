@@ -16,221 +16,633 @@ from utils.realistic_mannequin import RealisticMannequin
 # Page configuration
 st.set_page_config(
     page_title="WearBlend | Virtual Try-On",
-    page_icon="",
+    page_icon="✦",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Professional Color Palette
+# Modern design tokens — inspired by Framer / 21st.dev
 COLORS = {
-    'primary': '#2d3436',
-    'secondary': '#636e72',
-    'accent': '#74b9ff',
-    'background': '#fafafa',
-    'surface': '#ffffff',
-    'text_primary': '#2d3436',
-    'text_secondary': '#636e72',
-    'border': '#dfe6e9',
-    'success': '#00b894',
-    'muted': '#b2bec3',
+    'bg':            '#0a0a0f',
+    'bg_alt':        '#0e0e15',
+    'surface':       'rgba(255,255,255,0.04)',
+    'surface_hi':    'rgba(255,255,255,0.06)',
+    'border':        'rgba(255,255,255,0.08)',
+    'border_hi':     'rgba(255,255,255,0.14)',
+    'text':          '#f5f5f7',
+    'text_mute':     '#a1a1aa',
+    'text_dim':      '#71717a',
+    'accent':        '#8b5cf6',
+    'accent_2':      '#ec4899',
+    'accent_3':      '#3b82f6',
+    'success':       '#10b981',
+    'warning':       '#f59e0b',
 }
 
 
 def load_custom_css():
-    """Load professional CSS styles"""
+    """Load a modern, Framer-inspired design system with full mobile responsiveness."""
     st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    :root {{
+        --bg: {COLORS['bg']};
+        --bg-alt: {COLORS['bg_alt']};
+        --surface: {COLORS['surface']};
+        --surface-hi: {COLORS['surface_hi']};
+        --border: {COLORS['border']};
+        --border-hi: {COLORS['border_hi']};
+        --text: {COLORS['text']};
+        --mute: {COLORS['text_mute']};
+        --dim: {COLORS['text_dim']};
+        --accent: {COLORS['accent']};
+        --accent-2: {COLORS['accent_2']};
+        --accent-3: {COLORS['accent_3']};
+        --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #3b82f6 100%);
+        --grad-soft: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(236,72,153,0.10) 50%, rgba(59,130,246,0.15) 100%);
+    }}
 
     * {{
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }}
+
+    html, body, [class*="css"] {{
+        color: var(--text);
     }}
 
     .stApp {{
-        background-color: {COLORS['background']};
+        background: var(--bg);
+        background-image:
+            radial-gradient(at 8% 0%,  rgba(139,92,246,0.18) 0px, transparent 50%),
+            radial-gradient(at 92% 6%, rgba(236,72,153,0.14) 0px, transparent 50%),
+            radial-gradient(at 50% 100%, rgba(59,130,246,0.12) 0px, transparent 55%);
+        background-attachment: fixed;
     }}
 
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    .stDeployButton {{display: none;}}
+    /* hide Streamlit chrome (scoped selectors only — never bare header/footer) */
+    #MainMenu {{ visibility: hidden !important; }}
+    .stDeployButton {{ display: none !important; }}
+    [data-testid="stHeader"] {{ background: transparent !important; height: 0 !important; }}
+    [data-testid="stToolbar"] {{ display: none !important; }}
+    [data-testid="stDecoration"] {{ display: none !important; }}
+    [data-testid="stStatusWidget"] {{ display: none !important; }}
+    [data-testid="collapsedControl"] {{
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        backdrop-filter: blur(16px);
+    }}
 
-    .main-header {{
-        background: linear-gradient(135deg, {COLORS['primary']} 0%, {COLORS['secondary']} 100%);
-        padding: 2.5rem 2rem;
-        border-radius: 0 0 20px 20px;
-        margin: -1rem -1rem 2rem -1rem;
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 4rem !important;
+        max-width: 1280px;
+    }}
+
+    /* ─────────────── HERO ─────────────── */
+    .hero {{
+        position: relative;
+        padding: 3.5rem 2rem 2.5rem;
+        margin: 0.5rem 0 1.75rem;
         text-align: center;
+        border-radius: 28px;
+        overflow: hidden;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+            radial-gradient(120% 100% at 50% 0%, rgba(139,92,246,0.22), transparent 60%);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }}
+    .hero::before {{
+        content: "";
+        position: absolute; inset: -1px;
+        background: var(--grad);
+        opacity: 0.22;
+        filter: blur(60px);
+        z-index: 0;
+    }}
+    .hero-inner {{ position: relative; z-index: 1; }}
+
+    .badge {{
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 6px 14px;
+        font-size: 12px; font-weight: 500;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--mute);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        margin-bottom: 1.25rem;
+    }}
+    .badge .dot {{
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--success); box-shadow: 0 0 10px var(--success);
+        animation: pulse 2s ease-in-out infinite;
+    }}
+    @keyframes pulse {{
+        0%, 100% {{ opacity: 1; transform: scale(1); }}
+        50%      {{ opacity: 0.6; transform: scale(1.3); }}
     }}
 
-    .main-header h1 {{
-        color: white;
-        font-size: 2.2rem;
+    .hero h1 {{
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: clamp(2.4rem, 7vw, 4.5rem);
         font-weight: 700;
+        line-height: 1.02;
+        letter-spacing: -0.04em;
         margin: 0;
-        letter-spacing: -0.5px;
+        background: linear-gradient(180deg, #ffffff 0%, #a1a1aa 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
     }}
-
-    .main-header p {{
-        color: rgba(255,255,255,0.85);
-        font-size: 1rem;
-        margin-top: 0.5rem;
+    .hero h1 .grad {{
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+    }}
+    .hero p {{
+        color: var(--mute);
+        font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+        margin: 1rem auto 0;
+        max-width: 600px;
+        line-height: 1.55;
         font-weight: 400;
     }}
 
-    .card {{
-        background: {COLORS['surface']};
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin: 0.75rem 0;
-        border: 1px solid {COLORS['border']};
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }}
-
-    .card-title {{
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: {COLORS['text_primary']};
-        margin-bottom: 0.5rem;
-    }}
-
-    .stButton > button {{
-        background: {COLORS['primary']};
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.6rem 1.25rem;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-    }}
-
-    .stButton > button:hover {{
-        background: {COLORS['secondary']};
-        transform: translateY(-1px);
-    }}
-
-    .section-title {{
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: {COLORS['text_primary']};
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid {COLORS['primary']};
-        display: inline-block;
-    }}
-
-    .info-text {{
-        color: {COLORS['text_secondary']};
-        font-size: 0.85rem;
-        line-height: 1.5;
-    }}
-
-    .divider {{
-        height: 1px;
-        background: {COLORS['border']};
-        margin: 1.5rem 0;
-    }}
-
-    .outfit-preview {{
-        background: linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
-        border-radius: 16px;
+    /* ─────────────── PANELS / CARDS ─────────────── */
+    .panel {{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
         padding: 1.5rem;
-        border: 1px solid {COLORS['border']};
-        min-height: 400px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        transition: border-color 0.3s ease, transform 0.3s ease;
+    }}
+    .panel:hover {{ border-color: var(--border-hi); }}
+
+    .panel-head {{
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }}
+    .panel-title {{
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--mute);
+    }}
+    .panel-num {{
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 22px; height: 22px;
+        font-size: 11px; font-weight: 600;
+        color: var(--text);
+        background: var(--surface-hi);
+        border: 1px solid var(--border);
+        border-radius: 7px;
     }}
 
-    .score-display {{
-        background: linear-gradient(135deg, {COLORS['primary']} 0%, {COLORS['secondary']} 100%);
-        border-radius: 12px;
+    .section-label {{
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.01em;
+        margin: 0 0 1rem;
+        display: flex; align-items: center; gap: 10px;
+    }}
+    .section-label::before {{
+        content: "";
+        width: 4px; height: 18px;
+        background: var(--grad);
+        border-radius: 4px;
+    }}
+
+    /* ─────────────── BUTTONS ─────────────── */
+    .stButton > button, .stDownloadButton > button {{
+        background: var(--surface-hi) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border-hi) !important;
+        border-radius: 12px !important;
+        padding: 0.7rem 1.1rem !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        letter-spacing: 0.01em !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset !important;
+        width: 100% !important;
+    }}
+    .stButton > button:hover, .stDownloadButton > button:hover {{
+        background: rgba(255,255,255,0.10) !important;
+        border-color: rgba(255,255,255,0.22) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 8px 20px -8px rgba(139,92,246,0.35) !important;
+    }}
+    .stButton > button[kind="primary"] {{
+        background: var(--grad) !important;
+        border: 1px solid transparent !important;
+        color: white !important;
+        box-shadow: 0 8px 28px -8px rgba(139,92,246,0.65) !important;
+    }}
+    .stButton > button[kind="primary"]:hover {{
+        filter: brightness(1.08) !important;
+        box-shadow: 0 12px 36px -8px rgba(139,92,246,0.85) !important;
+    }}
+    .stDownloadButton > button {{
+        background: var(--grad) !important;
+        border: 1px solid transparent !important;
+        font-weight: 600 !important;
+        padding: 0.85rem 1.25rem !important;
+        box-shadow: 0 10px 28px -10px rgba(139,92,246,0.7) !important;
+    }}
+
+    /* ─────────────── INPUTS / SELECT / FILE ─────────────── */
+    .stSelectbox [data-baseweb="select"] > div {{
+        background: var(--surface-hi) !important;
+        border: 1px solid var(--border-hi) !important;
+        border-radius: 12px !important;
+        color: var(--text) !important;
+    }}
+    .stSelectbox label, .stFileUploader label, .stTextInput label {{
+        color: var(--mute) !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+    }}
+
+    [data-testid="stFileUploaderDropzone"] {{
+        background: var(--surface) !important;
+        border: 1.5px dashed var(--border-hi) !important;
+        border-radius: 14px !important;
+        padding: 1.1rem !important;
+        transition: all 0.25s ease !important;
+        min-height: 110px !important;
+    }}
+    [data-testid="stFileUploaderDropzone"]:hover {{
+        background: var(--surface-hi) !important;
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 4px rgba(139,92,246,0.10) !important;
+    }}
+    [data-testid="stFileUploaderDropzone"] section {{ color: var(--mute) !important; }}
+    [data-testid="stFileUploaderDropzone"] button {{
+        background: var(--surface-hi) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border-hi) !important;
+    }}
+    [data-testid="stFileUploaderDropzoneInstructions"] span,
+    [data-testid="stFileUploaderDropzoneInstructions"] small {{
+        color: var(--mute) !important;
+    }}
+
+    /* ─────────────── ITEM CARDS ─────────────── */
+    .item-row {{
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px;
+        margin: 12px 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        transition: all 0.25s ease;
+    }}
+    .item-row:hover {{ background: var(--surface-hi); border-color: var(--border-hi); }}
+    .item-thumb {{
+        width: 56px; height: 56px;
+        border-radius: 10px;
+        background: var(--surface-hi);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        flex-shrink: 0;
+    }}
+    .item-name {{ font-weight: 600; font-size: 0.92rem; color: var(--text); }}
+    .item-meta {{ font-size: 0.78rem; color: var(--dim); }}
+    .item-status {{
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 0.72rem; font-weight: 500;
+        color: var(--success);
+    }}
+    .item-status::before {{
+        content: ""; width: 6px; height: 6px;
+        background: var(--success); border-radius: 50%;
+        box-shadow: 0 0 8px var(--success);
+    }}
+
+    .upload-tile {{
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+    }}
+    .upload-tile-left {{ display: flex; align-items: center; gap: 12px; }}
+    .upload-icon {{
+        width: 38px; height: 38px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--surface-hi);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 16px;
+    }}
+    .upload-label {{ font-weight: 600; font-size: 0.9rem; color: var(--text); margin: 0; }}
+    .upload-desc  {{ font-size: 0.75rem; color: var(--dim); margin: 0; }}
+
+    /* ─────────────── PREVIEW STAGE ─────────────── */
+    .stage {{
+        position: relative;
+        border-radius: 24px;
+        padding: 1.5rem;
+        background:
+            radial-gradient(120% 80% at 50% 0%, rgba(139,92,246,0.18), transparent 60%),
+            linear-gradient(180deg, #14141c 0%, #0c0c12 100%);
+        border: 1px solid var(--border);
+        min-height: 460px;
+        overflow: hidden;
+    }}
+    .stage::before {{
+        content: "";
+        position: absolute; inset: 0;
+        background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 28px 28px;
+        mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+        -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+        pointer-events: none;
+    }}
+
+    .stage [data-testid="stImage"] {{ position: relative; z-index: 1; }}
+    .stage img {{
+        max-height: 540px;
+        object-fit: contain;
+        filter: drop-shadow(0 30px 60px rgba(139,92,246,0.18));
+    }}
+
+    .empty-cta {{
+        text-align: center;
+        color: var(--mute);
+        font-size: 0.9rem;
+        padding: 1rem 0 0;
+    }}
+
+    /* ─────────────── SCORE / METRIC ─────────────── */
+    .score-card {{
+        position: relative;
+        background: linear-gradient(135deg, rgba(139,92,246,0.10), rgba(236,72,153,0.08));
+        border: 1px solid var(--border-hi);
+        border-radius: 18px;
         padding: 1.5rem;
         text-align: center;
-        color: white;
+        overflow: hidden;
     }}
-
-    .score-value {{
-        font-size: 2.5rem;
+    .score-card::before {{
+        content: "";
+        position: absolute; inset: 0;
+        background: var(--grad);
+        opacity: 0.10;
+        filter: blur(40px);
+        pointer-events: none;
+    }}
+    .score-num {{
+        position: relative;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 3.5rem;
         font-weight: 700;
         line-height: 1;
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+    }}
+    .score-cap {{
+        position: relative;
+        font-size: 0.72rem; font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--mute);
+        margin-top: 0.4rem;
     }}
 
-    .score-label {{
-        font-size: 0.85rem;
-        opacity: 0.85;
-        margin-top: 0.25rem;
+    .metric-row {{ margin: 12px 0; }}
+    .metric-top  {{
+        display: flex; justify-content: space-between;
+        font-size: 0.82rem;
     }}
-
-    .color-swatch {{
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        border: 2px solid {COLORS['border']};
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }}
-
-    .color-swatch:hover {{
-        transform: scale(1.1);
-        border-color: {COLORS['primary']};
-    }}
-
-    .suggestion-item {{
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        padding: 0.75rem;
-        background: {COLORS['background']};
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        border-left: 3px solid {COLORS['accent']};
-    }}
-
-    .rating-bar {{
-        height: 6px;
-        background: {COLORS['border']};
-        border-radius: 3px;
+    .metric-top span:first-child {{ color: var(--mute); }}
+    .metric-top span:last-child  {{ color: var(--text); font-weight: 600; }}
+    .bar {{
+        height: 5px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 999px;
         overflow: hidden;
-        margin: 0.4rem 0;
+        margin-top: 6px;
     }}
-
-    .rating-fill {{
+    .bar-fill {{
         height: 100%;
-        background: linear-gradient(90deg, {COLORS['primary']} 0%, {COLORS['accent']} 100%);
-        border-radius: 3px;
+        background: var(--grad);
+        border-radius: 999px;
+        transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
     }}
 
-    .upload-zone {{
-        border: 2px dashed {COLORS['border']};
+    /* ─────────────── CHIPS / SWATCHES ─────────────── */
+    .chip-row {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+    .chip {{
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.78rem;
+        color: var(--mute);
+    }}
+
+    .swatch {{
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.14);
+        margin: 0 auto;
+        box-shadow: 0 6px 14px -6px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+        transition: transform 0.2s ease;
+    }}
+    .swatch:hover {{ transform: scale(1.08); }}
+
+    .skin-dot {{
+        width: 36px; height: 36px; border-radius: 50%;
+        margin: 0 auto;
+        box-shadow: 0 4px 12px -4px rgba(0,0,0,0.5);
+        transition: transform 0.2s ease;
+    }}
+    .skin-dot.active {{
+        box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent), 0 6px 14px -4px rgba(139,92,246,0.6);
+        transform: scale(1.05);
+    }}
+
+    /* ─────────────── SEGMENTED ─────────────── */
+    .seg-wrap {{
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+        padding: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+    }}
+
+    /* ─────────────── SUGGESTIONS ─────────────── */
+    .sug-card {{
+        display: flex; align-items: center; gap: 12px;
+        padding: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        transition: all 0.25s ease;
+    }}
+    .sug-card:hover {{ background: var(--surface-hi); border-color: var(--border-hi); transform: translateY(-2px); }}
+    .sug-color {{
+        width: 38px; height: 38px;
         border-radius: 10px;
-        padding: 1rem;
-        text-align: center;
-        transition: all 0.2s ease;
+        flex-shrink: 0;
+        border: 1px solid rgba(255,255,255,0.14);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }}
+    .sug-name {{ font-weight: 600; font-size: 0.9rem; color: var(--text); margin: 0; }}
+    .sug-reason {{ font-size: 0.74rem; color: var(--dim); margin: 2px 0 0; line-height: 1.4; }}
+
+    /* ─────────────── EXPANDER ─────────────── */
+    .streamlit-expanderHeader, [data-testid="stExpander"] summary {{
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        color: var(--text) !important;
+        font-weight: 500 !important;
+    }}
+    [data-testid="stExpander"] {{
+        border: none !important;
+        background: transparent !important;
     }}
 
-    .upload-zone:hover {{
-        border-color: {COLORS['accent']};
+    /* ─────────────── SIDEBAR ─────────────── */
+    [data-testid="stSidebar"] {{
+        background: rgba(10,10,15,0.85) !important;
+        border-right: 1px solid var(--border) !important;
+        backdrop-filter: blur(20px);
+    }}
+    [data-testid="stSidebar"] * {{ color: var(--text); }}
+    [data-testid="stSidebar"] .stMarkdown p,
+    [data-testid="stSidebar"] .stMarkdown li {{ color: var(--mute); font-size: 0.85rem; }}
+
+    /* ─────────────── ALERTS / TOASTS ─────────────── */
+    .stAlert, [data-testid="stNotification"] {{
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        color: var(--text) !important;
+    }}
+    [data-testid="stSpinner"] > div {{ border-top-color: var(--accent) !important; }}
+
+    /* ─────────────── DIVIDER ─────────────── */
+    .div-line {{
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
+        margin: 1.75rem 0;
     }}
 
-    .stTabs [data-baseweb="tab-list"] {{
-        gap: 4px;
-        background: transparent;
+    /* ─────────────── CAPTIONS / TEXT ─────────────── */
+    .stCaption, [data-testid="stCaptionContainer"] {{ color: var(--dim) !important; }}
+    .stMarkdown p {{ color: var(--mute); }}
+    .stMarkdown strong {{ color: var(--text); }}
+
+    label[data-testid="stWidgetLabel"] p {{ color: var(--mute) !important; font-size: 0.85rem !important; }}
+
+    /* ─────────────── FEATURE STRIP ─────────────── */
+    .feat-strip {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 1.25rem 0 1.75rem;
+    }}
+    .feat {{
+        padding: 14px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        display: flex; align-items: center; gap: 12px;
+        transition: all 0.25s ease;
+    }}
+    .feat:hover {{ border-color: var(--border-hi); transform: translateY(-2px); }}
+    .feat-icon {{
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--grad-soft);
+        border: 1px solid var(--border);
+        font-size: 16px;
+    }}
+    .feat-text {{ display: flex; flex-direction: column; }}
+    .feat-title {{ font-weight: 600; font-size: 0.85rem; color: var(--text); }}
+    .feat-sub   {{ font-size: 0.72rem; color: var(--dim); }}
+
+    /* ─────────────── MOBILE RESPONSIVE ─────────────── */
+    @media (max-width: 768px) {{
+        .block-container {{
+            padding: 0.5rem 0.75rem 3rem !important;
+        }}
+        .hero {{
+            padding: 2.5rem 1.25rem 2rem;
+            border-radius: 22px;
+            margin: 0.25rem 0 1.25rem;
+        }}
+        .hero h1 {{ font-size: 2.4rem; }}
+        .hero p  {{ font-size: 0.95rem; }}
+        .panel {{
+            padding: 1.1rem;
+            border-radius: 18px;
+        }}
+        .stage {{
+            min-height: 360px;
+            padding: 1rem;
+            border-radius: 20px;
+        }}
+        .feat-strip {{
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }}
+        .feat {{ padding: 12px 14px; }}
+        .stColumn, [data-testid="column"] {{
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }}
+        [data-testid="stHorizontalBlock"] {{
+            flex-wrap: wrap !important;
+            gap: 12px !important;
+        }}
+        .score-num {{ font-size: 2.8rem; }}
+        .stage img {{ max-height: 420px; }}
+        .section-label {{ font-size: 0.98rem; }}
+    }}
+    @media (max-width: 480px) {{
+        .hero {{ padding: 2rem 1rem 1.5rem; }}
+        .hero h1 {{ font-size: 2rem; }}
+        .badge {{ font-size: 10px; padding: 5px 12px; }}
+        .panel {{ padding: 1rem; }}
+        .item-row, .upload-tile {{ padding: 12px; gap: 10px; }}
+        .item-thumb {{ width: 48px; height: 48px; }}
     }}
 
-    .stTabs [data-baseweb="tab"] {{
-        background: {COLORS['surface']};
-        border-radius: 6px;
-        border: 1px solid {COLORS['border']};
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        font-size: 0.85rem;
+    /* fade-in */
+    @keyframes fadeUp {{
+        from {{ opacity: 0; transform: translateY(8px); }}
+        to   {{ opacity: 1; transform: translateY(0); }}
     }}
-
-    .stTabs [aria-selected="true"] {{
-        background: {COLORS['primary']};
-        color: white;
-        border-color: {COLORS['primary']};
+    .panel, .hero, .feat, .item-row, .sug-card {{
+        animation: fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) backwards;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -252,14 +664,51 @@ def initialize_session_state():
             st.session_state[key] = value
 
 
-def render_main_page():
-    """Render main application page"""
-    st.markdown("""
-    <div class="main-header">
-        <h1>WearBlend</h1>
-        <p>Virtual Try-On - See how clothes look on a realistic mannequin</p>
+def render_hero():
+    """Hero section with animated badge and gradient headline."""
+    item_count = len(st.session_state.processed_items)
+    st.markdown(f"""
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="badge">
+          <span class="dot"></span>
+          <span>AI Virtual Try-On · Live</span>
+        </div>
+        <h1>Try clothes on a<br/><span class="grad">realistic mannequin.</span></h1>
+        <p>Upload garments and instantly visualize complete outfits with intelligent
+        background removal, style scoring, and color recommendations.</p>
+      </div>
+    </div>
+
+    <div class="feat-strip">
+      <div class="feat">
+        <div class="feat-icon">✦</div>
+        <div class="feat-text">
+          <span class="feat-title">Auto Background Removal</span>
+          <span class="feat-sub">Clean cutouts in seconds</span>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">◈</div>
+        <div class="feat-text">
+          <span class="feat-title">Style Intelligence</span>
+          <span class="feat-sub">Outfit scoring & analysis</span>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">◐</div>
+        <div class="feat-text">
+          <span class="feat-title">Color Variations</span>
+          <span class="feat-sub">Recolor anything live</span>
+        </div>
+      </div>
     </div>
     """, unsafe_allow_html=True)
+
+
+def render_main_page():
+    """Render main application page"""
+    render_hero()
 
     # Initialize components
     image_processor = ImageProcessor()
@@ -267,124 +716,121 @@ def render_main_page():
     color_utils = ColorUtils()
     mannequin = RealisticMannequin(gender=st.session_state.gender, skin_tone=st.session_state.skin_tone)
 
-    # Main layout - two columns
-    col_upload, col_preview = st.columns([1, 1.2])
+    # Main layout - controls + stage
+    col_upload, col_preview = st.columns([1, 1.15], gap="large")
 
     with col_upload:
-        # Mannequin Settings Section
-        st.markdown('<p class="section-title">Mannequin Settings</p>', unsafe_allow_html=True)
+        # ─── MANNEQUIN PANEL ────────────────────────────────
+        st.markdown("""
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">01 · Mannequin</span>
+            <span class="panel-num">M</span>
+          </div>
+        """, unsafe_allow_html=True)
 
-        # Gender selection
-        gender_col1, gender_col2 = st.columns(2)
-        with gender_col1:
-            if st.button("Male", use_container_width=True,
-                        type="primary" if st.session_state.gender == 'male' else "secondary"):
+        st.markdown('<div class="section-label">Gender</div>', unsafe_allow_html=True)
+        g1, g2 = st.columns(2, gap="small")
+        with g1:
+            if st.button("◧  Male", use_container_width=True,
+                        type="primary" if st.session_state.gender == 'male' else "secondary",
+                        key="btn_gender_male"):
                 st.session_state.gender = 'male'
                 st.rerun()
-        with gender_col2:
-            if st.button("Female", use_container_width=True,
-                        type="primary" if st.session_state.gender == 'female' else "secondary"):
+        with g2:
+            if st.button("◨  Female", use_container_width=True,
+                        type="primary" if st.session_state.gender == 'female' else "secondary",
+                        key="btn_gender_female"):
                 st.session_state.gender = 'female'
                 st.rerun()
 
-        # Skin tone selection
-        st.markdown("**Skin Tone**")
+        st.markdown('<div style="height: 1.25rem"></div><div class="section-label">Skin Tone</div>', unsafe_allow_html=True)
         skin_tones = {
-            'light': '#f0dfcf',
+            'light':  '#f0dfcf',
             'medium': '#ddc3ac',
-            'tan': '#c39e80',
-            'dark': '#8c644b',
-            'deep': '#5a3c2d'
+            'tan':    '#c39e80',
+            'dark':   '#8c644b',
+            'deep':   '#5a3c2d',
         }
-
-        tone_cols = st.columns(5)
+        tone_cols = st.columns(5, gap="small")
         for col, (tone, color) in zip(tone_cols, skin_tones.items()):
             with col:
-                selected = st.session_state.skin_tone == tone
-                border = f"3px solid {COLORS['primary']}" if selected else "3px solid transparent"
+                active = "active" if st.session_state.skin_tone == tone else ""
                 st.markdown(f"""
-                <div style="text-align: center;">
-                    <div style="width: 36px; height: 36px; background: {color};
-                                border-radius: 50%; margin: 0 auto; border: {border};"></div>
+                <div style="text-align:center; margin-bottom: 6px;">
+                  <div class="skin-dot {active}" style="background:{color};"></div>
                 </div>
                 """, unsafe_allow_html=True)
                 if st.button(tone.title(), key=f"tone_{tone}", use_container_width=True):
                     st.session_state.skin_tone = tone
                     st.rerun()
 
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown('<p class="section-title">Upload Clothing Items</p>', unsafe_allow_html=True)
+        # ─── UPLOAD PANEL ───────────────────────────────────
+        st.markdown('<div style="height: 1rem"></div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">02 · Wardrobe</span>
+            <span class="panel-num">W</span>
+          </div>
+        """, unsafe_allow_html=True)
 
-        # Clothing categories
         clothing_config = [
-            ('shirt', 'Shirt / Top', 'Main upper garment'),
-            ('pants', 'Pants / Bottom', 'Lower body garment'),
-            ('jacket', 'Jacket / Outerwear', 'Optional layer'),
-            ('shoes', 'Shoes / Footwear', 'Complete the look'),
+            ('shirt',  'Shirt / Top',         'Main upper garment',  '◇'),
+            ('pants',  'Pants / Bottom',      'Lower body garment',  '◈'),
+            ('jacket', 'Jacket / Outerwear',  'Optional layer',      '◊'),
+            ('shoes',  'Shoes / Footwear',    'Complete the look',   '◉'),
         ]
-
-        # Additional accessories in expandable section
         accessory_config = [
-            ('tie', 'Tie / Neckwear', 'Formal accent'),
-            ('belt', 'Belt', 'Waist accessory'),
+            ('tie',  'Tie / Neckwear', 'Formal accent'),
+            ('belt', 'Belt',           'Waist accessory'),
         ]
 
-        # Main clothing items
-        for item_key, item_label, item_desc in clothing_config:
-            with st.container():
-                st.markdown(f"**{item_label}**")
-                st.caption(item_desc)
+        for item_key, item_label, item_desc, icon in clothing_config:
+            st.markdown(f"""
+            <div class="upload-tile">
+              <div class="upload-tile-left">
+                <div class="upload-icon">{icon}</div>
+                <div>
+                  <p class="upload-label">{item_label}</p>
+                  <p class="upload-desc">{item_desc}</p>
+                </div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                uploaded_file = st.file_uploader(
-                    f"Upload {item_label}",
-                    type=['png', 'jpg', 'jpeg', 'webp'],
-                    key=f"upload_{item_key}",
-                    label_visibility="collapsed"
-                )
+            uploaded_file = st.file_uploader(
+                f"Upload {item_label}",
+                type=['png', 'jpg', 'jpeg', 'webp'],
+                key=f"upload_{item_key}",
+                label_visibility="collapsed"
+            )
 
-                if uploaded_file:
-                    image = Image.open(uploaded_file)
-                    st.session_state.clothing_items[item_key] = image
+            if uploaded_file:
+                image = Image.open(uploaded_file)
+                st.session_state.clothing_items[item_key] = image
+                with st.spinner("Processing image…"):
+                    processed = image_processor.remove_background(image)
+                    st.session_state.processed_items[item_key] = processed
+                    colors = image_processor.extract_dominant_colors(image, 3)
+                    st.session_state.dominant_colors[item_key] = colors
 
-                    # Show thumbnail
-                    col1, col2 = st.columns([1, 3])
-                    with col1:
-                        st.image(image, width=80)
-                    with col2:
-                        # Process image
-                        with st.spinner("Processing..."):
-                            processed = image_processor.remove_background(image)
-                            st.session_state.processed_items[item_key] = processed
-                            colors = image_processor.extract_dominant_colors(image, 3)
-                            st.session_state.dominant_colors[item_key] = colors
-                        st.success("Ready")
-                        if st.button("Remove", key=f"remove_{item_key}"):
-                            del st.session_state.clothing_items[item_key]
-                            if item_key in st.session_state.processed_items:
-                                del st.session_state.processed_items[item_key]
-                            if item_key in st.session_state.dominant_colors:
-                                del st.session_state.dominant_colors[item_key]
-                            st.rerun()
+            if item_key in st.session_state.clothing_items:
+                c1, c2 = st.columns([1, 3], gap="small")
+                with c1:
+                    st.image(st.session_state.clothing_items[item_key], width=72)
+                with c2:
+                    st.markdown('<div class="item-status">Ready to wear</div>', unsafe_allow_html=True)
+                    if st.button("Remove", key=f"remove_{item_key}", use_container_width=True):
+                        for d in (st.session_state.clothing_items,
+                                  st.session_state.processed_items,
+                                  st.session_state.dominant_colors):
+                            d.pop(item_key, None)
+                        st.rerun()
 
-                elif item_key in st.session_state.clothing_items:
-                    col1, col2 = st.columns([1, 3])
-                    with col1:
-                        st.image(st.session_state.clothing_items[item_key], width=80)
-                    with col2:
-                        st.success("Uploaded")
-                        if st.button("Remove", key=f"remove_{item_key}"):
-                            del st.session_state.clothing_items[item_key]
-                            if item_key in st.session_state.processed_items:
-                                del st.session_state.processed_items[item_key]
-                            if item_key in st.session_state.dominant_colors:
-                                del st.session_state.dominant_colors[item_key]
-                            st.rerun()
-
-                st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-        # Accessories section
-        with st.expander("Accessories (Optional)"):
+        with st.expander("Accessories (optional)"):
             for item_key, item_label, item_desc in accessory_config:
                 uploaded_file = st.file_uploader(
                     item_label,
@@ -392,225 +838,251 @@ def render_main_page():
                     key=f"upload_{item_key}",
                     help=item_desc
                 )
-
                 if uploaded_file:
                     image = Image.open(uploaded_file)
                     st.session_state.clothing_items[item_key] = image
-                    with st.spinner("Processing..."):
+                    with st.spinner("Processing…"):
                         processed = image_processor.remove_background(image)
                         st.session_state.processed_items[item_key] = processed
                         colors = image_processor.extract_dominant_colors(image, 3)
                         st.session_state.dominant_colors[item_key] = colors
                     st.success(f"{item_label} added")
 
-    with col_preview:
-        st.markdown('<p class="section-title">Mannequin Preview</p>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # Update mannequin with current settings
+    # ─── PREVIEW STAGE ─────────────────────────────────────
+    with col_preview:
+        st.markdown("""
+        <div class="panel" style="padding: 1rem;">
+          <div class="panel-head" style="padding: 0.5rem 0.5rem 0;">
+            <span class="panel-title">03 · Live Preview</span>
+            <span class="panel-num">P</span>
+          </div>
+        """, unsafe_allow_html=True)
+
         mannequin = RealisticMannequin(
             gender=st.session_state.gender,
             skin_tone=st.session_state.skin_tone
         )
 
-        # Generate preview
+        st.markdown('<div class="stage">', unsafe_allow_html=True)
         if st.session_state.processed_items:
-            # Render outfit on mannequin
             outfit_image = mannequin.render_outfit(st.session_state.processed_items)
-
-            # Display
             st.image(outfit_image, use_container_width=True)
+        else:
+            empty_mannequin = mannequin.render_outfit({})
+            st.image(empty_mannequin, use_container_width=True)
+            st.markdown('<div class="empty-cta">Upload clothing items to dress the mannequin →</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-            # Download button
+        if st.session_state.processed_items:
+            outfit_image = mannequin.render_outfit(st.session_state.processed_items)
             img_bytes = mannequin.get_image_bytes(outfit_image)
+            st.markdown('<div style="height: 0.75rem"></div>', unsafe_allow_html=True)
             st.download_button(
-                label="Download Outfit Image",
+                label="↓  Download outfit as PNG",
                 data=img_bytes,
                 file_name="wearblend_outfit.png",
                 mime="image/png",
                 use_container_width=True
             )
-        else:
-            # Show empty mannequin
-            empty_mannequin = mannequin.render_outfit({})
-            st.image(empty_mannequin, use_container_width=True)
-            st.caption("Upload clothing items to dress the mannequin")
 
-    # Style Analysis Section
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ─── STYLE ANALYSIS ────────────────────────────────────
     if st.session_state.processed_items:
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="div-line"></div>', unsafe_allow_html=True)
 
-        analysis_col1, analysis_col2 = st.columns([1, 1])
-
-        # Get dominant colors for analysis
         outfit_colors = {}
         for item_key, colors in st.session_state.dominant_colors.items():
             if colors:
                 outfit_colors[item_key] = colors[0]
 
+        analysis_col1, analysis_col2 = st.columns([1, 1], gap="large")
+
         with analysis_col1:
-            st.markdown('<p class="section-title">Style Analysis</p>', unsafe_allow_html=True)
+            st.markdown("""
+            <div class="panel">
+              <div class="panel-head">
+                <span class="panel-title">04 · Style Analysis</span>
+                <span class="panel-num">★</span>
+              </div>
+            """, unsafe_allow_html=True)
 
             if outfit_colors:
                 analysis = style_engine.analyze_outfit(outfit_colors)
                 rating = style_engine.rate_outfit(outfit_colors)
 
-                # Score display
                 st.markdown(f"""
-                <div class="score-display">
-                    <div class="score-value">{rating['overall']}</div>
-                    <div class="score-label">Overall Score</div>
+                <div class="score-card">
+                  <div class="score-num">{rating['overall']}</div>
+                  <div class="score-cap">Overall Score</div>
                 </div>
+                <div style="height: 1.25rem"></div>
                 """, unsafe_allow_html=True)
 
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                # Category scores
                 for category, score in rating['categories'].items():
                     label = category.replace('_', ' ').title()
                     st.markdown(f"""
-                    <div style="margin: 0.5rem 0;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-                            <span>{label}</span>
-                            <span style="font-weight: 600;">{score}%</span>
-                        </div>
-                        <div class="rating-bar">
-                            <div class="rating-fill" style="width: {score}%;"></div>
-                        </div>
+                    <div class="metric-row">
+                      <div class="metric-top"><span>{label}</span><span>{score}%</span></div>
+                      <div class="bar"><div class="bar-fill" style="width:{score}%"></div></div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # Strengths
                 if analysis['strengths']:
-                    st.markdown("**Strengths**")
+                    st.markdown('<div style="height: 1rem"></div><div class="section-label">Strengths</div>', unsafe_allow_html=True)
                     for strength in analysis['strengths'][:2]:
                         st.markdown(f"""
-                        <div class="suggestion-item">
-                            <p style="margin: 0; font-size: 0.9rem;">{strength}</p>
+                        <div class="sug-card">
+                          <div class="sug-color" style="background: var(--grad);"></div>
+                          <div>
+                            <p class="sug-name">{strength}</p>
+                          </div>
                         </div>
                         """, unsafe_allow_html=True)
 
+            st.markdown("</div>", unsafe_allow_html=True)
+
         with analysis_col2:
-            st.markdown('<p class="section-title">Color Variations</p>', unsafe_allow_html=True)
+            st.markdown("""
+            <div class="panel">
+              <div class="panel-head">
+                <span class="panel-title">05 · Color Lab</span>
+                <span class="panel-num">◐</span>
+              </div>
+            """, unsafe_allow_html=True)
 
-            if st.session_state.processed_items:
-                item_options = list(st.session_state.processed_items.keys())
+            item_options = list(st.session_state.processed_items.keys())
+            if item_options:
+                selected_item = st.selectbox(
+                    "Select item to recolor",
+                    item_options,
+                    format_func=lambda x: x.replace('_', ' ').title()
+                )
 
-                if item_options:
-                    selected_item = st.selectbox(
-                        "Select item to recolor",
-                        item_options,
-                        format_func=lambda x: x.replace('_', ' ').title()
-                    )
+                if selected_item and selected_item in st.session_state.dominant_colors:
+                    original_color = st.session_state.dominant_colors[selected_item][0]
+                    variations = color_utils.get_color_variations(original_color, 5)
 
-                    if selected_item and selected_item in st.session_state.dominant_colors:
-                        original_color = st.session_state.dominant_colors[selected_item][0]
-                        variations = color_utils.get_color_variations(original_color, 5)
+                    swatch_cols = st.columns(len(variations), gap="small")
+                    for idx, (col, var) in enumerate(zip(swatch_cols, variations)):
+                        with col:
+                            color_hex = '#{:02x}{:02x}{:02x}'.format(*var['rgb'])
+                            st.markdown(f"""
+                            <div style="text-align:center; margin-bottom: 6px;">
+                              <div class="swatch" style="background:{color_hex};"></div>
+                              <p style="font-size: 0.68rem; color: var(--dim); margin: 6px 0 0;">{var['name'][:10]}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            if st.button("Apply", key=f"var_{idx}", use_container_width=True):
+                                recolored = image_processor.apply_color_transform(
+                                    st.session_state.processed_items[selected_item],
+                                    var['rgb']
+                                )
+                                st.session_state.processed_items[selected_item] = recolored
+                                st.rerun()
 
-                        # Display color swatches
-                        swatch_cols = st.columns(len(variations))
-                        for idx, (col, var) in enumerate(zip(swatch_cols, variations)):
-                            with col:
-                                color_hex = '#{:02x}{:02x}{:02x}'.format(*var['rgb'])
-                                st.markdown(f"""
-                                <div style="text-align: center;">
-                                    <div class="color-swatch" style="background: {color_hex}; margin: 0 auto;"></div>
-                                    <p style="font-size: 0.7rem; color: #636e72; margin-top: 0.25rem;">
-                                        {var['name'][:10]}
-                                    </p>
-                                </div>
-                                """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-                                if st.button("Apply", key=f"var_{idx}", use_container_width=True):
-                                    # Apply color variation
-                                    recolored = image_processor.apply_color_transform(
-                                        st.session_state.processed_items[selected_item],
-                                        var['rgb']
-                                    )
-                                    st.session_state.processed_items[selected_item] = recolored
-                                    st.rerun()
-
-        # Recommendations
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-        st.markdown('<p class="section-title">Style Recommendations</p>', unsafe_allow_html=True)
-
+        # ─── RECOMMENDATIONS ───────────────────────────────
         if outfit_colors:
-            rec_cols = st.columns(3)
+            st.markdown('<div class="div-line"></div>', unsafe_allow_html=True)
+            st.markdown("""
+            <div class="panel">
+              <div class="panel-head">
+                <span class="panel-title">06 · Recommendations</span>
+                <span class="panel-num">✦</span>
+              </div>
+            """, unsafe_allow_html=True)
 
             all_suggestions = []
             for item_key, color in outfit_colors.items():
                 suggestions = color_utils.suggest_matching_colors(color, item_key)
                 all_suggestions.extend(suggestions[:1])
 
+            rec_cols = st.columns(3, gap="medium")
             for idx, col in enumerate(rec_cols):
                 if idx < len(all_suggestions):
                     sug = all_suggestions[idx]
                     sug_hex = '#{:02x}{:02x}{:02x}'.format(*sug['color'])
                     with col:
+                        reason = sug['reason']
+                        if len(reason) > 60:
+                            reason = reason[:60] + "…"
                         st.markdown(f"""
-                        <div class="card">
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <div style="width: 35px; height: 35px; background: {sug_hex};
-                                            border-radius: 6px;"></div>
-                                <div>
-                                    <p style="margin: 0; font-weight: 600; font-size: 0.9rem;">{sug['name']}</p>
-                                    <p style="margin: 0; font-size: 0.75rem; color: #636e72;">
-                                        {sug['reason'][:50]}...
-                                    </p>
-                                </div>
-                            </div>
+                        <div class="sug-card">
+                          <div class="sug-color" style="background:{sug_hex};"></div>
+                          <div>
+                            <p class="sug-name">{sug['name']}</p>
+                            <p class="sug-reason">{reason}</p>
+                          </div>
                         </div>
                         """, unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_sidebar():
     """Render sidebar content"""
     with st.sidebar:
         st.markdown(f"""
-        <div style="padding: 1rem 0;">
-            <h2 style="color: {COLORS['primary']}; font-weight: 700; margin: 0;">WearBlend</h2>
-            <p style="color: {COLORS['text_secondary']}; font-size: 0.8rem;">Virtual Try-On</p>
+        <div style="padding: 1rem 0 1.5rem;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:32px; height:32px; border-radius:9px; background:var(--grad);
+                        display:flex; align-items:center; justify-content:center;
+                        font-weight:700; color:white; font-family:'Space Grotesk';">W</div>
+            <div>
+              <div style="font-family:'Space Grotesk'; font-weight:700; font-size:1.1rem; color:var(--text);">WearBlend</div>
+              <div style="font-size:0.7rem; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase;">Virtual Try-On</div>
+            </div>
+          </div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-        # Stats
         if st.session_state.processed_items:
             st.markdown(f"""
-            <div class="card">
-                <p style="margin: 0.2rem 0;"><strong>Items:</strong> {len(st.session_state.processed_items)}</p>
-                <p style="margin: 0.2rem 0;"><strong>Gender:</strong> {st.session_state.gender.title()}</p>
-                <p style="margin: 0.2rem 0;"><strong>Skin:</strong> {st.session_state.skin_tone.title()}</p>
+            <div class="panel" style="padding: 1rem;">
+              <div class="panel-title" style="margin-bottom: 0.75rem;">Session</div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:0.85rem;">
+                <span style="color:var(--mute);">Items</span>
+                <span style="color:var(--text); font-weight:600;">{len(st.session_state.processed_items)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:0.85rem;">
+                <span style="color:var(--mute);">Gender</span>
+                <span style="color:var(--text); font-weight:600;">{st.session_state.gender.title()}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:0.85rem;">
+                <span style="color:var(--mute);">Skin</span>
+                <span style="color:var(--text); font-weight:600;">{st.session_state.skin_tone.title()}</span>
+              </div>
             </div>
             """, unsafe_allow_html=True)
 
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-        st.markdown("**How It Works**")
-        st.markdown(f"""
-        <ol style="color: {COLORS['text_secondary']}; font-size: 0.85rem; padding-left: 1.25rem;">
-            <li style="margin: 0.4rem 0;">Select mannequin gender and skin tone</li>
-            <li style="margin: 0.4rem 0;">Upload clothing images</li>
-            <li style="margin: 0.4rem 0;">Background is removed automatically</li>
-            <li style="margin: 0.4rem 0;">Clothes appear on the mannequin</li>
-            <li style="margin: 0.4rem 0;">Download your outfit image</li>
+        st.markdown('<div class="div-line"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">How it works</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <ol style="padding-left: 1.1rem; margin: 0; color: var(--mute); font-size: 0.85rem; line-height: 1.7;">
+          <li>Pick mannequin gender + skin tone</li>
+          <li>Upload your clothing photos</li>
+          <li>Backgrounds removed automatically</li>
+          <li>Outfit rendered on the mannequin</li>
+          <li>Score, recolor, and download</li>
         </ol>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-        st.markdown("**Tips**")
-        st.markdown(f"""
-        <ul style="color: {COLORS['text_secondary']}; font-size: 0.8rem; padding-left: 1.25rem;">
-            <li style="margin: 0.3rem 0;">Use clear, well-lit photos</li>
-            <li style="margin: 0.3rem 0;">Plain backgrounds work best</li>
-            <li style="margin: 0.3rem 0;">Front-facing views preferred</li>
+        st.markdown('<div class="div-line"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Tips</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <ul style="padding-left: 1.1rem; margin: 0; color: var(--mute); font-size: 0.8rem; line-height: 1.7;">
+          <li>Use clear, well-lit photos</li>
+          <li>Plain backgrounds work best</li>
+          <li>Front-facing views preferred</li>
         </ul>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-        if st.button("Clear All", use_container_width=True):
+        st.markdown('<div class="div-line"></div>', unsafe_allow_html=True)
+        if st.button("Clear all items", use_container_width=True):
             for key in ['clothing_items', 'processed_items', 'dominant_colors']:
                 st.session_state[key] = {}
             st.rerun()

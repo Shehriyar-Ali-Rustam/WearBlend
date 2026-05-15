@@ -10,8 +10,10 @@ import numpy as np
 try:
     from rembg import remove
     REMBG_AVAILABLE = True
-except ImportError:
+except BaseException:
+    # rembg sometimes raises SystemExit when its onnxruntime backend is missing
     REMBG_AVAILABLE = False
+    remove = None
 
 
 class ImageProcessor:

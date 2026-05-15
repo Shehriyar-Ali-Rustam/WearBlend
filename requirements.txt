@@ -1,40 +1,20 @@
 # WearBlend - Virtual Try-On Application
-# Core Dependencies
+# Core dependencies (only what's actually imported)
 
-# Web Framework
+# Web framework
 streamlit>=1.40.0
 
-# Image Processing
+# Image processing
 Pillow>=10.0.0
-opencv-python-headless>=4.8.0
 numpy>=1.24.0
 
-# Background Removal / Segmentation
+# Background removal (with built-in fallback if unavailable)
 rembg>=2.0.50
 
-# AI/ML Models
-torch>=2.0.0
-torchvision>=0.15.0
-transformers>=4.35.0
-sentence-transformers>=2.2.0
-
-# Color Processing
-colorthief>=0.2.1
-colormath>=3.0.0
-scikit-image>=0.21.0
-
-# HTTP Requests (for API calls if needed)
-requests>=2.31.0
-httpx>=0.25.0
-
-# OpenAI (for AI Try-On feature with GPT-4 Vision and DALL-E)
+# AI try-on providers (optional features)
 openai>=1.0.0
-
-# Google Gemini/Imagen (alternative AI provider for Try-On)
 google-genai>=1.0.0
 
-# Utilities
+# HTTP + env
+requests>=2.31.0
 python-dotenv>=1.0.0
-
-# Optional: For advanced virtual try-on (if using specific models)
-# diffusers>=0.21.0  # For stable diffusion based try-on
