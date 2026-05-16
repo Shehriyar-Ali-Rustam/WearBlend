@@ -181,16 +181,65 @@ class RealisticMannequin:
         shadow = shadow.filter(ImageFilter.GaussianBlur(6))
         return Image.alpha_composite(clothing, shadow)
 
-    def render_outfit(self, clothing_items, background_color=(235, 235, 235)):
-        mannequin = self.create_mannequin()
-        for ct, ci in sorted(clothing_items.items(), key=lambda x: self.LAYER_ORDER.get(x[0].lower(), 5)):
-            fitted, pos = self.fit_clothing(ci, ct)
-            layer = Image.new("RGBA", self.CANVAS_SIZE, (0, 0, 0, 0))
-            layer.paste(fitted, pos, fitted)
-            mannequin = Image.alpha_composite(mannequin, layer)
-        final = self._create_bg(background_color)
-        final.paste(mannequin, (0, 0), mannequin)
-        return self._add_shadow(final)
+    # Vertical stacking order (top → bottom) for flat-lay rendering
+    FLATLAY_ORDER = ["jacket", "tie", "shirt", "belt", "pants", "shoes"]
+
+    # Relative widths so items look proportional next to each other
+    FLATLAY_WIDTH_FACTOR = {
+        "jacket": 0.62,
+        "shirt":  0.55,
+        "tie":    0.10,
+        "belt":   0.40,
+        "pants":  0.42,
+        "shoes":  0.38,
+    }
+
+    def render_outfit(self, clothing_items, background_color=(245, 245, 248)):
+        """Flat-lay composition — clothing items stacked vertically, touching, no body."""
+        return self.render_flatlay(clothing_items, background_color)
+
+    def render_flatlay(self, clothing_items, background=(245, 245, 248)):
+        canvas_w, canvas_h = self.CANVAS_SIZE
+        bg = self._create_bg(background)
+
+        if not clothing_items:
+            return bg
+
+        # Crop each item to its non-transparent bounding box, then scale to target width
+        prepared = []
+        for key in self.FLATLAY_ORDER:
+            if key not in clothing_items:
+                continue
+            img = clothing_items[key]
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
+            bbox = img.getbbox()
+            if bbox:
+                img = img.crop(bbox)
+            target_w = int(canvas_w * self.FLATLAY_WIDTH_FACTOR.get(key, 0.4))
+            ratio = target_w / img.width
+            new_size = (target_w, max(1, int(img.height * ratio)))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            prepared.append(img)
+
+        total_h = sum(im.height for im in prepared)
+        # Fit vertically into the canvas with a small top/bottom margin if needed
+        max_h = int(canvas_h * 0.92)
+        if total_h > max_h:
+            scale = max_h / total_h
+            prepared = [im.resize((max(1, int(im.width * scale)),
+                                   max(1, int(im.height * scale))),
+                                  Image.Resampling.LANCZOS) for im in prepared]
+            total_h = sum(im.height for im in prepared)
+
+        # Center the stack vertically and paste items touching each other
+        y = (canvas_h - total_h) // 2
+        for im in prepared:
+            x = (canvas_w - im.width) // 2
+            bg.paste(im, (x, y), im)
+            y += im.height
+
+        return bg
 
     def _create_bg(self, color):
         w, h = self.CANVAS_SIZE

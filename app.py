@@ -211,6 +211,27 @@ def load_custom_css():
         border-radius: 7px;
     }}
 
+    .dev-pill {{
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 5px 10px 5px 9px;
+        font-size: 10.5px; font-weight: 500;
+        letter-spacing: 0.04em;
+        color: #fbbf24;
+        background: rgba(245, 158, 11, 0.10);
+        border: 1px solid rgba(245, 158, 11, 0.30);
+        border-radius: 999px;
+        white-space: nowrap;
+    }}
+    .dev-pill .dev-dot {{
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #fbbf24;
+        box-shadow: 0 0 8px #fbbf24;
+        animation: pulse 2s ease-in-out infinite;
+    }}
+    @media (max-width: 480px) {{
+        .dev-pill {{ font-size: 9.5px; padding: 4px 8px; }}
+    }}
+
     .section-label {{
         font-family: 'Space Grotesk', sans-serif;
         font-size: 1.05rem;
@@ -390,6 +411,36 @@ def load_custom_css():
         color: var(--mute);
         font-size: 0.9rem;
         padding: 1rem 0 0;
+    }}
+
+    .empty-state {{
+        position: relative; z-index: 1;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 380px;
+        text-align: center;
+        padding: 2rem 1rem;
+    }}
+    .empty-icon {{
+        width: 64px; height: 64px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 28px; color: var(--text);
+        background: var(--surface-hi);
+        border: 1px solid var(--border-hi);
+        border-radius: 18px;
+        margin-bottom: 1rem;
+        box-shadow: 0 0 0 6px rgba(139,92,246,0.06), inset 0 0 0 1px rgba(255,255,255,0.04);
+    }}
+    .empty-title {{
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.05rem; font-weight: 600;
+        color: var(--text);
+        margin: 0;
+    }}
+    .empty-sub {{
+        font-size: 0.85rem;
+        color: var(--mute);
+        margin: 6px 0 0;
+        line-height: 1.55;
     }}
 
     /* ─────────────── SCORE / METRIC ─────────────── */
@@ -856,7 +907,10 @@ def render_main_page():
         <div class="panel" style="padding: 1rem;">
           <div class="panel-head" style="padding: 0.5rem 0.5rem 0;">
             <span class="panel-title">03 · Live Preview</span>
-            <span class="panel-num">P</span>
+            <span class="dev-pill">
+              <span class="dev-dot"></span>
+              Development mode · render under refinement
+            </span>
           </div>
         """, unsafe_allow_html=True)
 
@@ -870,9 +924,13 @@ def render_main_page():
             outfit_image = mannequin.render_outfit(st.session_state.processed_items)
             st.image(outfit_image, use_container_width=True)
         else:
-            empty_mannequin = mannequin.render_outfit({})
-            st.image(empty_mannequin, use_container_width=True)
-            st.markdown('<div class="empty-cta">Upload clothing items to dress the mannequin →</div>', unsafe_allow_html=True)
+            st.markdown("""
+            <div class="empty-state">
+              <div class="empty-icon">◇</div>
+              <p class="empty-title">No outfit yet</p>
+              <p class="empty-sub">Upload a shirt, pants, and shoes —<br/>they'll stack into a clean flat-lay preview.</p>
+            </div>
+            """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         if st.session_state.processed_items:
